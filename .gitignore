@@ -1,0 +1,608 @@
+# =========================================================
+# UNIVERSAL .gitignore
+# Safe defaults for most languages, frameworks, editors,
+# operating systems, cloud tools, and build systems.
+# =========================================================
+
+
+# =========================================================
+# OPERATING SYSTEM FILES
+# =========================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# Temporary OS files
+.fseventsd
+
+
+# =========================================================
+# EDITORS / IDES
+# =========================================================
+
+# VS Code
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# JetBrains
+.idea/
+*.iml
+
+# Sublime
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*.swn
+
+# Emacs
+*~
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Eclipse
+.project
+.classpath
+.settings/
+
+# NetBeans
+nbproject/private/
+build/
+nbbuild/
+dist/
+
+# Xcode
+DerivedData/
+*.xcworkspace
+xcuserdata/
+*.xcuserstate
+
+
+# =========================================================
+# LOGS & DEBUG
+# =========================================================
+
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+*.pid
+*.seed
+*.pid.lock
+
+coverage/
+*.lcov
+
+# Crash dumps
+*.stackdump
+
+
+# =========================================================
+# ENVIRONMENT & SECRETS
+# =========================================================
+
+.env
+.env.*
+*.env
+*.local
+*.secret
+*.secrets
+!.env.example
+!.envrc.example
+!.secrets.example
+!.env.*.example
+
+# Common secret files
+secrets.yml
+credentials.json
+firebase-adminsdk*.json
+
+# Python secrets
+instance/
+.webassets-cache
+
+# Direnv
+.envrc
+
+
+# =========================================================
+# PACKAGE MANAGERS
+# =========================================================
+
+# Node
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/
+.yarn-cache/
+.yarnrc
+.yarn-integrity
+
+# Bun
+.bun/
+
+# Python
+pip-wheel-metadata/
+
+# PHP / Composer
+vendor/
+
+# Ruby
+.bundle/
+
+# Rust
+target/
+
+# Go
+pkg/
+
+
+# =========================================================
+# BUILD OUTPUTS
+# =========================================================
+
+dist/
+build/
+out/
+release/
+debug/
+tmp/
+temp/
+.cache/
+.cache-loader/
+.parcel-cache/
+.next/
+.nuxt/
+.svelte-kit/
+.storybook-out/
+public/build/
+lib/
+bin/
+obj/
+
+# Generic
+*.out
+*.class
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+
+# Minified files
+*.min.*.map
+
+
+# =========================================================
+# ARCHIVES & BACKUPS
+# =========================================================
+
+*.7z
+*.gz
+*.zip
+*.tar
+*.tgz
+*.bz2
+*.rar
+
+# Backup files
+*.bak
+*.tmp
+*.temp
+*.old
+*.orig
+*.rej
+
+
+# =========================================================
+# DATABASES
+# =========================================================
+
+*.sqlite
+*.sqlite3
+*.db
+*.mdb
+
+
+# =========================================================
+# PYTHON
+# =========================================================
+
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Packaging
+.eggs/
+*.egg
+*.egg-info/
+develop-eggs/
+downloads/
+sdist/
+wheels/
+share/python-wheels/
+
+# Testing
+.pytest_cache/
+.tox/
+.nox/
+.hypothesis/
+
+# Type checkers
+.mypy_cache/
+.pyre/
+.ruff_cache/
+.pytype/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Django
+*.mo
+*.pot
+staticfiles/
+media/
+
+# Flask
+instance/
+
+# FastAPI
+.fastapi/
+
+
+# =========================================================
+# NODE.JS / JAVASCRIPT / TYPESCRIPT
+# =========================================================
+
+# Dependencies
+node_modules/
+
+# Build
+.next/
+.nuxt/
+dist/
+coverage/
+
+# Vite
+vite.svg
+
+# TypeScript
+*.tsbuildinfo
+
+# TurboRepo
+.turbo/
+
+# Expo
+.expo/
+.expo-shared/
+
+# React Native
+*.hprof
+
+# Storybook
+storybook-static/
+
+
+# =========================================================
+# JAVA / JVM
+# =========================================================
+
+*.class
+*.jar
+*.war
+*.ear
+.gradle/
+.gradle-cache/
+target/
+
+# Maven
+.mvn/wrapper/maven-wrapper.jar
+
+
+# =========================================================
+# KOTLIN
+# =========================================================
+
+*.kotlin_module
+
+
+# =========================================================
+# GO
+# =========================================================
+
+bin/
+.coverprofile
+
+
+# =========================================================
+# RUST
+# =========================================================
+
+target/
+Cargo.lock
+# Uncomment next line for applications:
+#! Cargo.lock
+
+
+# =========================================================
+# .NET / C#
+# =========================================================
+
+bin/
+obj/
+*.rsuser
+
+
+# =========================================================
+# PHP
+# =========================================================
+
+vendor/
+composer.lock
+
+
+# =========================================================
+# RUBY
+# =========================================================
+
+.bundle/
+vendor/bundle/
+.yardoc/
+.yardoc
+_yardoc/
+doc/
+
+
+# =========================================================
+# SWIFT
+# =========================================================
+
+.build/
+DerivedData/
+
+
+# =========================================================
+# ANDROID
+# =========================================================
+
+.gradle/
+local.properties
+*.apk
+*.aab
+captures/
+.externalNativeBuild/
+.cxx/
+
+
+# =========================================================
+# FLUTTER / DART
+# =========================================================
+
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+
+
+# =========================================================
+# TERRAFORM / INFRASTRUCTURE
+# =========================================================
+
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.lock.hcl
+
+
+# =========================================================
+# SERVERLESS / CLOUD
+# =========================================================
+
+.serverless/
+.aws-sam/
+
+# Firebase
+.firebase/
+
+# Vercel
+.vercel/
+
+# Netlify
+.netlify/
+
+# SST
+.sst/
+
+
+# =========================================================
+# DOCKER
+# =========================================================
+
+# Docker override files
+docker-compose.override.yml
+
+# Local volumes
+docker-data/
+volumes/
+
+
+# =========================================================
+# KUBERNETES
+# =========================================================
+
+*.kubeconfig
+
+
+# =========================================================
+# DATA SCIENCE / ML
+# =========================================================
+
+# Model checkpoints
+checkpoints/
+models/
+mlruns/
+wandb/
+tensorboard/
+runs/
+
+# Data
+data/
+datasets/
+
+# Notebook exports
+*.ipynb_checkpoints
+
+# Large binary artifacts
+*.h5
+*.pt
+*.pth
+*.onnx
+*.pb
+
+
+# =========================================================
+# TESTING
+# =========================================================
+
+coverage/
+htmlcov/
+.nyc_output/
+junit.xml
+test-results/
+
+
+# =========================================================
+# CACHES
+# =========================================================
+
+.cache/
+.eslintcache
+.stylelintcache
+.sass-cache/
+.cache-loader/
+
+
+# =========================================================
+# SECURITY
+# =========================================================
+
+# Private keys
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+
+# SSH
+.id_rsa
+.id_dsa
+
+# GPG
+*.gpg
+
+
+# =========================================================
+# MISC
+# =========================================================
+
+# Local config
+local.settings.json
+
+# Runtime files
+pids/
+*.pid
+
+# Temporary folders
+tmp/
+temp/
+
+# Generated files
+generated/
+
+# Mac package files
+*.pkg
+
+# Misc binaries
+*.bin
+
+
+# =========================================================
+# OPTIONAL
+# =========================================================
+
+# Images
+# *.png
+# *.jpg
+# *.jpeg
+# *.gif
+# *.svg
+
+# PDFs
+# *.pdf
+
+# Data exports
+# *.csv
+# *.tsv
+
+# Lock files (usually SHOULD be committed)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# IDE settings you WANT shared
+# !.vscode/settings.json
+# !.idea/codeStyles/
+
+# Ignore any file starting with "ignore."
+ignore.*
+
+# =========================================================
+# END
+# =========================================================
