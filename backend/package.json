@@ -1,0 +1,24 @@
+{
+  "name": "url-shortener-backend",
+  "version": "1.0.0",
+  "description": "Backend for URL Shortener Project",
+  "keywords": [
+    "url-shortener",
+    "backend"
+  ],
+  "homepage": "https://github.com/HetulMistry/URL-Shortener#readme",
+  "bugs": {
+    "url": "https://github.com/HetulMistry/URL-Shortener/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HetulMistry/URL-Shortener.git"
+  },
+  "license": "MIT",
+  "author": "Hetul Mistry",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm run test"
+  }
+}
