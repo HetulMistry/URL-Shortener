@@ -5,6 +5,34 @@ import {
   RESERVED_KEYWORDS,
 } from "../constants/url.constants.js";
 import AppError from "../utils/AppError.js";
+import {
+  deleteCachedUrl,
+  getCachedUrl,
+  invalidateUrlCache,
+  setCachedUrl,
+} from "./cache.service.js";
+
+const trackClickAndAnalytics = async (urlId, reqInfo) => {
+  await prisma.$transaction([
+    prisma.url.update({
+      where: { id: urlId },
+      data: { clicks: { increment: 1 } },
+    }),
+    prisma.analytics.create({
+      data: {
+        urlId,
+        ipAddress: reqInfo.ip,
+        userAgent: reqInfo.userAgent,
+      },
+    }),
+  ]);
+};
+
+const assertUrlNotExpired = (expiresAt) => {
+  if (expiresAt && new Date() > new Date(expiresAt)) {
+    throw new AppError("URL has expired", 410);
+  }
+};
 
 export const createShortUrl = async (
   originalUrl,
@@ -68,6 +96,19 @@ export const createShortUrl = async (
 export const getOriginalUrlByShortCode = async (shortCode, reqInfo) => {
   const lowerShortCode = shortCode.toLowerCase();
 
+  const cached = await getCachedUrl(lowerShortCode);
+  if (cached) {
+    try {
+      assertUrlNotExpired(cached.expiresAt);
+    } catch (error) {
+      await deleteCachedUrl(lowerShortCode);
+      throw error;
+    }
+
+    await trackClickAndAnalytics(cached.id, reqInfo);
+    return cached.originalUrl;
+  }
+
   const url = await prisma.url.findFirst({
     where: {
       OR: [{ shortCode: lowerShortCode }, { customAlias: lowerShortCode }],
@@ -76,24 +117,10 @@ export const getOriginalUrlByShortCode = async (shortCode, reqInfo) => {
 
   if (!url) return null;
 
-  // Check Expiration
-  if (url.expiresAt && new Date() > new Date(url.expiresAt))
-    throw new AppError("URL has expired", 410);
+  assertUrlNotExpired(url.expiresAt);
 
-  // Track analytics and increment clicks concurrently using Prisma transaction
-  await prisma.$transaction([
-    prisma.url.update({
-      where: { id: url.id },
-      data: { clicks: { increment: 1 } },
-    }),
-    prisma.analytics.create({
-      data: {
-        urlId: url.id,
-        ipAddress: reqInfo.ip,
-        userAgent: reqInfo.userAgent,
-      },
-    }),
-  ]);
+  await setCachedUrl(lowerShortCode, url);
+  await trackClickAndAnalytics(url.id, reqInfo);
 
   return url.originalUrl;
 };
@@ -128,6 +155,11 @@ export const getUserUrls = async (userId, { page, limit, search }) => {
 };
 
 export const deleteUrl = async (id) => {
+  const url = await prisma.url.findUnique({ where: { id } });
+  if (!url) throw new AppError("URL not found", 404);
+
+  await invalidateUrlCache(url);
+
   await prisma.$transaction([
     prisma.analytics.deleteMany({ where: { urlId: id } }),
     prisma.url.delete({ where: { id } }),
@@ -135,6 +167,9 @@ export const deleteUrl = async (id) => {
 };
 
 export const updateUrl = async (id, updates) => {
+  const existingUrl = await prisma.url.findUnique({ where: { id } });
+  if (!existingUrl) throw new AppError("URL not found", 404);
+
   const { customAlias, expiresAt } = updates;
   const data = {};
 
@@ -170,10 +205,15 @@ export const updateUrl = async (id, updates) => {
     data.expiresAt = expiresAt ? new Date(expiresAt) : null;
   }
 
-  return await prisma.url.update({
+  const updatedUrl = await prisma.url.update({
     where: { id },
     data,
   });
+
+  await invalidateUrlCache(existingUrl);
+  await invalidateUrlCache(updatedUrl);
+
+  return updatedUrl;
 };
 
 export const getUrlAnalytics = async (id) => {

@@ -6,6 +6,7 @@ import {
   getMe,
 } from "../controllers/auth.controller.js";
 import authMiddleware from "../middlewares/auth.middleware.js";
+import { authLimiter } from "../middlewares/rate-limit.middleware.js";
 
 const authRouter = Router();
 
@@ -49,7 +50,7 @@ const authRouter = Router();
  *       409:
  *         description: Email already in use
  */
-authRouter.post("/register", register);
+authRouter.post("/register", authLimiter, register);
 
 /**
  * @swagger
@@ -80,7 +81,7 @@ authRouter.post("/register", register);
  *       401:
  *         description: Invalid credentials
  */
-authRouter.post("/login", login);
+authRouter.post("/login", authLimiter, login);
 
 /**
  * @swagger

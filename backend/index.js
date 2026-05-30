@@ -4,14 +4,34 @@ import authRouter from "./routes/auth.route.js";
 import errorMiddleware from "./middlewares/error.middleware.js";
 import urlRouter from "./routes/url.route.js";
 import { redirectToOriginalUrl } from "./controllers/url.controller.js";
+import { getHealth } from "./controllers/health.controller.js";
 import swaggerUi from "swagger-ui-express";
 import swaggerSpec from "./config/swagger.js";
+import requestLogger from "./middlewares/request-log.middleware.js";
 
 const app = express();
 
+app.set("trust proxy", 1);
+
+app.use(requestLogger);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static("public"));
+
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: Application health check
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: Service is healthy or degraded
+ *       503:
+ *         description: Service is unhealthy
+ */
+app.get("/health", getHealth);
+
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/urls", urlRouter);
 

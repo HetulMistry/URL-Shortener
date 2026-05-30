@@ -10,6 +10,7 @@ import {
 import authMiddleware from "../middlewares/auth.middleware.js";
 import { validateUrl } from "../middlewares/url.middleware.js";
 import verifyUrlOwnership from "../middlewares/verify-url-ownership.middleware.js";
+import { urlCreationLimiter } from "../middlewares/rate-limit.middleware.js";
 
 const urlRouter = Router();
 
@@ -57,7 +58,7 @@ urlRouter.use(authMiddleware);
  *       409:
  *         description: Alias already taken
  */
-urlRouter.post("/", validateUrl, createUrl);
+urlRouter.post("/", urlCreationLimiter, validateUrl, createUrl);
 
 /**
  * @swagger
