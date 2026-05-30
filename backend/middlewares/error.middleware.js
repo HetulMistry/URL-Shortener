@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { logger } from "../utils/logger.js";
 
 const errorMiddleware = (err, _, res, next) => {
   try {
@@ -6,7 +7,7 @@ const errorMiddleware = (err, _, res, next) => {
     error.message = err.message;
     error.statusCode = err.statusCode;
 
-    console.error(err);
+    logger.error(err.stack || err.message || err);
 
     // --- Prisma Errors ---
     // Handle Prisma Known Request Errors
