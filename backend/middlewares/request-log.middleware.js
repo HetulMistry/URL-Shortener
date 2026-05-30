@@ -1,16 +1,27 @@
 import morgan from "morgan";
 import { NODE_ENV } from "../config/env.js";
+import { logger } from "../utils/logger.js";
 
-morgan.token("timestamp", () => new Date().toISOString());
+const requestLogger = morgan((tokens, req, res) => {
+  const responseTime = tokens["response-time"](req, res);
+  const status = tokens.status(req, res);
+  const method = tokens.method(req, res);
+  const url = tokens.url(req, res);
+  const ip = tokens["remote-addr"](req, res);
 
-const developmentFormat =
-  ":timestamp :method :url :status :response-time ms - :remote-addr :user-agent";
+  logger.info(`${method} ${url} ${status} ${responseTime}ms - ${ip}`, {
+    requestId: req.id,
+    method,
+    route: req.originalUrl,
+    status: Number(status),
+    responseTime: Number(responseTime),
+    ip,
+    ...(NODE_ENV !== "production" && {
+      userAgent: req.headers["user-agent"],
+    }),
+  });
 
-const productionFormat =
-  ":timestamp :method :url :status :response-time ms - :remote-addr";
-
-const requestLogger = morgan(
-  NODE_ENV === "production" ? productionFormat : developmentFormat,
-);
+  return null;
+});
 
 export default requestLogger;

@@ -1,10 +1,19 @@
 import prisma from "../config/client.js";
+import { Prisma } from "@prisma/client";
 import { nanoid } from "nanoid";
-import {
-  SHORT_CODE_LENGTH,
-  RESERVED_KEYWORDS,
-} from "../constants/url.constants.js";
+import { SHORT_CODE_LENGTH } from "../constants/url.constants.js";
 import AppError from "../utils/AppError.js";
+import { validateCustomAlias } from "../utils/alias.validation.js";
+import { validateOriginalUrl } from "../utils/url.validation.js";
+import {
+  assertFutureExpiration,
+  assertNotExpired,
+} from "../utils/expiration.js";
+import { extractReferrerDomain } from "../utils/analytics.helpers.js";
+import {
+  formatBrowserStats,
+  formatTopReferrers,
+} from "../utils/analytics.helpers.js";
 import {
   deleteCachedUrl,
   getCachedUrl,
@@ -23,15 +32,10 @@ const trackClickAndAnalytics = async (urlId, reqInfo) => {
         urlId,
         ipAddress: reqInfo.ip,
         userAgent: reqInfo.userAgent,
+        referrer: reqInfo.referrer,
       },
     }),
   ]);
-};
-
-const assertUrlNotExpired = (expiresAt) => {
-  if (expiresAt && new Date() > new Date(expiresAt)) {
-    throw new AppError("URL has expired", 410);
-  }
 };
 
 export const createShortUrl = async (
@@ -40,37 +44,23 @@ export const createShortUrl = async (
   expiresAt,
   userId,
 ) => {
+  validateOriginalUrl(originalUrl);
+
   let shortCode = customAlias;
 
   if (customAlias) {
-    const lowerAlias = customAlias.toLowerCase();
+    const normalizedAlias = validateCustomAlias(customAlias);
 
-    // Validate alias format
-    const aliasRegex = /^[a-zA-Z0-9_-]+$/;
-    if (!aliasRegex.test(lowerAlias))
-      throw new AppError(
-        "Invalid custom alias. Only alphanumeric characters, dashes, and underscores are allowed.",
-        400,
-      );
-
-    if (lowerAlias.length < 3 || lowerAlias.length > 50)
-      throw new AppError("Alias must be between 3 and 50 characters", 400);
-
-    // Check reserved keywords
-    if (RESERVED_KEYWORDS.includes(lowerAlias))
-      throw new AppError("Custom alias is a reserved keyword.", 400);
-
-    // Check uniqueness
     const existing = await prisma.url.findFirst({
       where: {
-        OR: [{ shortCode: lowerAlias }, { customAlias: lowerAlias }],
+        OR: [{ shortCode: normalizedAlias }, { customAlias: normalizedAlias }],
       },
     });
 
     if (existing) throw new AppError("Alias already taken", 409);
 
-    customAlias = lowerAlias;
-    shortCode = lowerAlias;
+    customAlias = normalizedAlias;
+    shortCode = normalizedAlias;
   } else {
     shortCode = nanoid(SHORT_CODE_LENGTH);
     let existing = await prisma.url.findUnique({ where: { shortCode } });
@@ -79,6 +69,8 @@ export const createShortUrl = async (
       existing = await prisma.url.findUnique({ where: { shortCode } });
     }
   }
+
+  if (expiresAt) assertFutureExpiration(expiresAt);
 
   const newUrl = await prisma.url.create({
     data: {
@@ -99,7 +91,7 @@ export const getOriginalUrlByShortCode = async (shortCode, reqInfo) => {
   const cached = await getCachedUrl(lowerShortCode);
   if (cached) {
     try {
-      assertUrlNotExpired(cached.expiresAt);
+      assertNotExpired(cached.expiresAt);
     } catch (error) {
       await deleteCachedUrl(lowerShortCode);
       throw error;
@@ -117,13 +109,19 @@ export const getOriginalUrlByShortCode = async (shortCode, reqInfo) => {
 
   if (!url) return null;
 
-  assertUrlNotExpired(url.expiresAt);
+  assertNotExpired(url.expiresAt);
 
   await setCachedUrl(lowerShortCode, url);
   await trackClickAndAnalytics(url.id, reqInfo);
 
   return url.originalUrl;
 };
+
+export const buildRedirectRequestInfo = (req) => ({
+  ip: req.ip || req.socket?.remoteAddress,
+  userAgent: req.headers["user-agent"],
+  referrer: extractReferrerDomain(req.headers.referer || req.headers.referrer),
+});
 
 export const getUserUrls = async (userId, { page, limit, search }) => {
   const skip = (page - 1) * limit;
@@ -174,34 +172,23 @@ export const updateUrl = async (id, updates) => {
   const data = {};
 
   if (customAlias) {
-    const lowerAlias = customAlias.toLowerCase();
-    const aliasRegex = /^[a-zA-Z0-9_-]+$/;
-    if (!aliasRegex.test(lowerAlias))
-      throw new AppError(
-        "Invalid custom alias. Only alphanumeric characters, dashes, and underscores are allowed.",
-        400,
-      );
-    if (lowerAlias.length < 3 || lowerAlias.length > 50)
-      throw new AppError("Alias must be between 3 and 50 characters", 400);
-    if (RESERVED_KEYWORDS.includes(lowerAlias))
-      throw new AppError("Custom alias is a reserved keyword.", 400);
+    const normalizedAlias = validateCustomAlias(customAlias);
 
     const existing = await prisma.url.findFirst({
       where: {
-        OR: [{ shortCode: lowerAlias }, { customAlias: lowerAlias }],
+        OR: [{ shortCode: normalizedAlias }, { customAlias: normalizedAlias }],
         id: { not: id },
       },
     });
     if (existing) throw new AppError("Alias already taken", 409);
 
-    data.customAlias = lowerAlias;
-    data.shortCode = lowerAlias;
+    data.customAlias = normalizedAlias;
+    data.shortCode = normalizedAlias;
   }
 
   if (expiresAt !== undefined) {
-    if (expiresAt && new Date(expiresAt) <= new Date()) {
-      throw new AppError("Expiration must be a future date", 400);
-    }
+    if (expiresAt) assertFutureExpiration(expiresAt);
+
     data.expiresAt = expiresAt ? new Date(expiresAt) : null;
   }
 
@@ -216,17 +203,51 @@ export const updateUrl = async (id, updates) => {
   return updatedUrl;
 };
 
-export const getUrlAnalytics = async (id) => {
-  const totalClicks = await prisma.analytics.count({ where: { urlId: id } });
+const buildAnalyticsDateFilter = (startDate, endDate) => {
+  if (!startDate && !endDate) return {};
+
+  const clickedAt = {};
+  if (startDate) clickedAt.gte = new Date(`${startDate}T00:00:00.000Z`);
+  if (endDate) clickedAt.lte = new Date(`${endDate}T23:59:59.999Z`);
+
+  return { clickedAt };
+};
+
+const buildAnalyticsDateConditions = (startDate, endDate) => {
+  const conditions = [];
+  if (startDate)
+    conditions.push(
+      Prisma.sql`"clickedAt" >= ${new Date(`${startDate}T00:00:00.000Z`)}`,
+    );
+
+  if (endDate)
+    conditions.push(
+      Prisma.sql`"clickedAt" <= ${new Date(`${endDate}T23:59:59.999Z`)}`,
+    );
+
+  return conditions;
+};
+
+export const getUrlAnalytics = async (id, { startDate, endDate } = {}) => {
+  const dateFilter = buildAnalyticsDateFilter(startDate, endDate);
+  const dateConditions = buildAnalyticsDateConditions(startDate, endDate);
+  const dateSql =
+    dateConditions.length > 0
+      ? Prisma.sql`AND ${Prisma.join(dateConditions, " AND ")}`
+      : Prisma.empty;
+
+  const totalClicks = await prisma.analytics.count({
+    where: { urlId: id, ...dateFilter },
+  });
 
   const uniqueVisitorsGroup = await prisma.analytics.groupBy({
     by: ["ipAddress"],
-    where: { urlId: id, ipAddress: { not: null } },
+    where: { urlId: id, ipAddress: { not: null }, ...dateFilter },
   });
   const uniqueVisitors = uniqueVisitorsGroup.length;
 
   const recentVisits = await prisma.analytics.findMany({
-    where: { urlId: id },
+    where: { urlId: id, ...dateFilter },
     orderBy: { clickedAt: "desc" },
     take: 10,
   });
@@ -235,20 +256,52 @@ export const getUrlAnalytics = async (id) => {
     SELECT TO_CHAR("clickedAt", 'YYYY-MM-DD') as date, CAST(COUNT(*) AS INTEGER) as clicks
     FROM "analytics"
     WHERE "urlId" = ${id}
+    ${dateSql}
     GROUP BY TO_CHAR("clickedAt", 'YYYY-MM-DD')
     ORDER BY date ASC
   `;
 
-  // Format to regular objects instead of Prisma raw response objects
   const clicksPerDay = clicksPerDayRaw.map((row) => ({
     date: row.date,
     clicks: Number(row.clicks),
   }));
+
+  const browserStatsRaw = await prisma.$queryRaw`
+    SELECT
+      CASE
+        WHEN "userAgent" ILIKE '%Edg/%' OR "userAgent" ILIKE '%Edge/%' THEN 'Edge'
+        WHEN "userAgent" ILIKE '%OPR/%' OR "userAgent" ILIKE '%Opera%' THEN 'Opera'
+        WHEN "userAgent" ILIKE '%Firefox/%' THEN 'Firefox'
+        WHEN "userAgent" ILIKE '%Chrome/%' AND "userAgent" NOT ILIKE '%Edg/%' THEN 'Chrome'
+        WHEN "userAgent" ILIKE '%Safari/%' AND "userAgent" NOT ILIKE '%Chrome/%' THEN 'Safari'
+        ELSE 'Other'
+      END AS browser,
+      CAST(COUNT(*) AS INTEGER) AS clicks
+    FROM "analytics"
+    WHERE "urlId" = ${id}
+      AND "userAgent" IS NOT NULL
+      ${dateSql}
+    GROUP BY browser
+    ORDER BY clicks DESC
+  `;
+
+  const topReferrersRaw = await prisma.$queryRaw`
+    SELECT referrer, CAST(COUNT(*) AS INTEGER) AS clicks
+    FROM "analytics"
+    WHERE "urlId" = ${id}
+      AND referrer IS NOT NULL
+      ${dateSql}
+    GROUP BY referrer
+    ORDER BY clicks DESC
+    LIMIT 10
+  `;
 
   return {
     totalClicks,
     uniqueVisitors,
     clicksPerDay,
     recentVisits,
+    browserStats: formatBrowserStats(browserStatsRaw),
+    topReferrers: formatTopReferrers(topReferrersRaw),
   };
 };

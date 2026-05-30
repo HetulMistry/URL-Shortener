@@ -1,42 +1,39 @@
 import jwt from "jsonwebtoken";
 import prisma from "../config/client.js";
+import { JWT_SECRET } from "../config/env.js";
+import { sendError } from "../utils/response.js";
 
 const authMiddleware = async (req, res, next) => {
-  // Access Bearer token from Authorization header
   const authHeader = req.headers.authorization || req.headers.Authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer "))
-    return res
-      .status(401)
-      .json({ message: "Authorization token missing or invalid" });
+    return sendError(
+      res,
+      401,
+      "Authorization token missing or invalid",
+      req.id,
+    );
 
   const token = authHeader.split(" ")[1];
 
-  const secret = process.env.JWT_SECRET;
-  if (!secret)
-    return res.status(500).json({ message: "JWT secret not configured" });
-
-  // Verify the token and user
   try {
-    const decoded = jwt.verify(token, secret);
+    const decoded = jwt.verify(token, JWT_SECRET);
     const userId = decoded?.id || decoded?.userId || decoded?.sub;
 
-    if (!userId)
-      return res.status(401).json({ message: "Invalid token payload" });
+    if (!userId) return sendError(res, 401, "Invalid token payload", req.id);
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) return res.status(401).json({ message: "User not found" });
+    if (!user) return sendError(res, 401, "User not found", req.id);
 
     req.user = user;
     next();
   } catch (err) {
-    if (err.name === "TokenExpiredError") {
-      return res.status(401).json({ message: "Token expired" });
-    } else if (err.name === "JsonWebTokenError") {
-      return res.status(401).json({ message: "Invalid token" });
-    }
-    
-    // Pass any other errors (like database connection issues) to the error handler
+    if (err.name === "TokenExpiredError")
+      return sendError(res, 401, "Token expired", req.id);
+
+    if (err.name === "JsonWebTokenError")
+      return sendError(res, 401, "Invalid token", req.id);
+
     next(err);
   }
 };

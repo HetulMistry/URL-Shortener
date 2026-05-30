@@ -19,7 +19,7 @@ export const getCachedUrl = async (shortCode) => {
     const redis = getRedis();
     return await redis.get(buildUrlCacheKey(shortCode));
   } catch (error) {
-    logger.warn("Redis cache read failed", error.message);
+    logger.warn("Redis cache read failed", { message: error.message });
     return null;
   }
 };
@@ -35,7 +35,7 @@ export const setCachedUrl = async (shortCode, urlRecord) => {
       },
     );
   } catch (error) {
-    logger.warn("Redis cache write failed", error.message);
+    logger.warn("Redis cache write failed", { message: error.message });
   }
 };
 
@@ -46,7 +46,7 @@ export const deleteCachedUrl = async (shortCode) => {
     const redis = getRedis();
     await redis.del(buildUrlCacheKey(shortCode));
   } catch (error) {
-    logger.warn("Redis cache delete failed", error.message);
+    logger.warn("Redis cache delete failed", { message: error.message });
   }
 };
 

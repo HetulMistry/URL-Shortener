@@ -54,6 +54,7 @@ model Analytics {
 
   ipAddress String?
   userAgent String?
+  referrer  String?
 
   clickedAt DateTime @default(now())
 
@@ -61,5 +62,6 @@ model Analytics {
   url   Url    @relation(fields: [urlId], references: [id])
 
   @@index([urlId])
+  @@index([referrer])
   @@map("analytics")
 }

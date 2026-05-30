@@ -1,71 +1,49 @@
-import express from "express";
+import createApp from "./app.js";
 import { PORT } from "./config/env.js";
-import authRouter from "./routes/auth.route.js";
-import errorMiddleware from "./middlewares/error.middleware.js";
-import urlRouter from "./routes/url.route.js";
-import { redirectToOriginalUrl } from "./controllers/url.controller.js";
-import { getHealth } from "./controllers/health.controller.js";
-import swaggerUi from "swagger-ui-express";
-import swaggerSpec from "./config/swagger.js";
-import requestLogger from "./middlewares/request-log.middleware.js";
+import prisma from "./config/client.js";
+import { flushLogs, logger } from "./utils/logger.js";
 
-const app = express();
+const app = createApp();
+let isShuttingDown = false;
 
-app.set("trust proxy", 1);
-
-app.use(requestLogger);
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(express.static("public"));
-
-/**
- * @swagger
- * /health:
- *   get:
- *     summary: Application health check
- *     tags: [Health]
- *     responses:
- *       200:
- *         description: Service is healthy or degraded
- *       503:
- *         description: Service is unhealthy
- */
-app.get("/health", getHealth);
-
-app.use("/api/v1/auth", authRouter);
-app.use("/api/v1/urls", urlRouter);
-
-app.use("/api/v1/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
-/**
- * @swagger
- * /{shortCode}:
- *   get:
- *     summary: Redirect to original URL
- *     tags: [Redirect]
- *     parameters:
- *       - in: path
- *         name: shortCode
- *         required: true
- *         schema:
- *           type: string
- *         description: The short code or custom alias
- *     responses:
- *       302:
- *         description: Redirects to the original URL
- *       404:
- *         description: URL not found
- *       410:
- *         description: URL expired
- */
-app.get("/:shortCode", redirectToOriginalUrl);
-
-app.get("/", (req, res) => {
-  res.send("Hello World!");
+const server = app.listen(PORT, () => {
+  logger.info(`Server is running on port http://localhost:${PORT}`, {
+    port: PORT,
+  });
 });
 
-app.use(errorMiddleware);
+const shutdown = async (signal) => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port http://localhost:${PORT}`);
-});
+  logger.info(`Received ${signal}. Starting graceful shutdown.`);
+
+  server.close(async () => {
+    logger.info("HTTP server closed.");
+
+    try {
+      await prisma.$disconnect();
+      logger.info("Prisma disconnected.");
+    } catch (error) {
+      logger.error("Failed to disconnect Prisma", { message: error.message });
+    }
+
+    try {
+      await flushLogs();
+    } catch (error) {
+      console.error("Failed to flush logs", error);
+    }
+
+    process.exit(0);
+  });
+
+  setTimeout(() => {
+    logger.error("Graceful shutdown timed out. Forcing exit.");
+    process.exit(1);
+  }, 10000).unref();
+};
+
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+
+export { app, server };

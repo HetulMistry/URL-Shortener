@@ -1,10 +1,8 @@
 import rateLimit from "express-rate-limit";
+import { sendError } from "../utils/response.js";
 
 const rateLimitHandler = (message) => (req, res) => {
-  res.status(429).json({
-    success: false,
-    message,
-  });
+  sendError(res, 429, message, req.id);
 };
 
 export const authLimiter = rateLimit({

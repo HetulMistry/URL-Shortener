@@ -1,4 +1,5 @@
 import prisma from "../config/client.js";
+import { sendError } from "../utils/response.js";
 
 const verifyUrlOwnership = async (req, res, next) => {
   try {
@@ -9,12 +10,10 @@ const verifyUrlOwnership = async (req, res, next) => {
       where: { id },
     });
 
-    if (!url) return res.status(404).json({ message: "URL not found" });
+    if (!url) return sendError(res, 404, "URL not found", req.id);
 
     if (url.userId !== userId)
-      return res
-        .status(403)
-        .json({ message: "Forbidden: You do not own this URL" });
+      return sendError(res, 403, "Forbidden: You do not own this URL", req.id);
 
     req.urlData = url;
     next();

@@ -1,9 +1,13 @@
 import * as urlService from "../services/url.service.js";
+import { streamAnalyticsCsv } from "../services/export.service.js";
+import { buildShortUrl, generateQrCode } from "../services/qr.service.js";
+import { APP_BASE_URL } from "../config/env.js";
+import { sendSuccess, sendError } from "../utils/response.js";
 
 export const createUrl = async (req, res, next) => {
   try {
     const { originalUrl, customAlias, expiresAt } = req.body;
-    const userId = req.user.id; // Comes from auth middleware
+    const userId = req.user.id;
 
     const newUrl = await urlService.createShortUrl(
       originalUrl,
@@ -12,10 +16,7 @@ export const createUrl = async (req, res, next) => {
       userId,
     );
 
-    return res.status(201).json({
-      success: true,
-      url: newUrl,
-    });
+    return sendSuccess(res, 201, { url: newUrl });
   } catch (error) {
     next(error);
   }
@@ -24,9 +25,7 @@ export const createUrl = async (req, res, next) => {
 export const getUserUrls = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const page = parseInt(req.query.page, 10) || 1;
-    const limit = Math.min(parseInt(req.query.limit, 10) || 10, 100);
-    const search = req.query.search || "";
+    const { page, limit, search } = req.validatedQuery;
 
     const { urls, total, totalPages } = await urlService.getUserUrls(userId, {
       page,
@@ -34,13 +33,12 @@ export const getUserUrls = async (req, res, next) => {
       search,
     });
 
-    return res.status(200).json({
-      success: true,
+    return sendSuccess(res, 200, {
       page,
       limit,
       total,
       totalPages,
-      data: urls,
+      urls,
     });
   } catch (error) {
     next(error);
@@ -49,11 +47,7 @@ export const getUserUrls = async (req, res, next) => {
 
 export const getUrlDetails = async (req, res, next) => {
   try {
-    // req.urlData is populated by verifyUrlOwnership middleware
-    return res.status(200).json({
-      success: true,
-      data: req.urlData,
-    });
+    return sendSuccess(res, 200, { url: req.urlData });
   } catch (error) {
     next(error);
   }
@@ -64,10 +58,7 @@ export const deleteUrl = async (req, res, next) => {
     const { id } = req.params;
     await urlService.deleteUrl(id);
 
-    return res.status(200).json({
-      success: true,
-      message: "URL deleted successfully",
-    });
+    return sendSuccess(res, 200, { message: "URL deleted successfully" });
   } catch (error) {
     next(error);
   }
@@ -76,12 +67,40 @@ export const deleteUrl = async (req, res, next) => {
 export const getUrlAnalytics = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const analyticsData = await urlService.getUrlAnalytics(id);
-
-    return res.status(200).json({
-      success: true,
-      data: analyticsData,
+    const { startDate, endDate } = req.validatedQuery || {};
+    const analyticsData = await urlService.getUrlAnalytics(id, {
+      startDate,
+      endDate,
     });
+
+    return sendSuccess(res, 200, analyticsData);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const exportUrlAnalytics = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await streamAnalyticsCsv(id, res);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getUrlQrCode = async (req, res, next) => {
+  try {
+    const { format } = req.validatedQuery;
+    const shortUrl = buildShortUrl(APP_BASE_URL, req.urlData.shortCode);
+
+    if (format === "base64") {
+      const dataUrl = await generateQrCode(shortUrl, "base64");
+      return sendSuccess(res, 200, { qrCode: dataUrl, shortUrl });
+    }
+
+    const buffer = await generateQrCode(shortUrl, "png");
+    res.setHeader("Content-Type", "image/png");
+    return res.status(200).send(buffer);
   } catch (error) {
     next(error);
   }
@@ -90,22 +109,15 @@ export const getUrlAnalytics = async (req, res, next) => {
 export const redirectToOriginalUrl = async (req, res, next) => {
   try {
     const { shortCode } = req.params;
-
-    // Collect basic analytics data
-    const reqInfo = {
-      ip: req.ip || req.connection.remoteAddress,
-      userAgent: req.headers["user-agent"],
-    };
+    const reqInfo = urlService.buildRedirectRequestInfo(req);
 
     const originalUrl = await urlService.getOriginalUrlByShortCode(
       shortCode,
       reqInfo,
     );
 
-    if (!originalUrl)
-      return res.status(404).json({ message: "Short URL not found" });
+    if (!originalUrl) return sendError(res, 404, "Short URL not found", req.id);
 
-    // Redirect to the original URL
     return res.redirect(originalUrl);
   } catch (error) {
     next(error);
@@ -122,10 +134,7 @@ export const updateUrl = async (req, res, next) => {
       expiresAt,
     });
 
-    return res.status(200).json({
-      success: true,
-      data: updatedUrl,
-    });
+    return sendSuccess(res, 200, { url: updatedUrl });
   } catch (error) {
     next(error);
   }

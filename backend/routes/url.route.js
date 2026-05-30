@@ -6,11 +6,20 @@ import {
   deleteUrl,
   getUrlAnalytics,
   updateUrl,
+  exportUrlAnalytics,
+  getUrlQrCode,
 } from "../controllers/url.controller.js";
 import authMiddleware from "../middlewares/auth.middleware.js";
-import { validateUrl } from "../middlewares/url.middleware.js";
 import verifyUrlOwnership from "../middlewares/verify-url-ownership.middleware.js";
 import { urlCreationLimiter } from "../middlewares/rate-limit.middleware.js";
+import validate from "../middlewares/validate.middleware.js";
+import {
+  analyticsQuerySchema,
+  createUrlSchema,
+  paginationSchema,
+  qrQuerySchema,
+  updateUrlSchema,
+} from "../validation/url.schema.js";
 
 const urlRouter = Router();
 
@@ -21,7 +30,6 @@ const urlRouter = Router();
  *   description: URL Management API
  */
 
-// Protected routes (Require authentication)
 urlRouter.use(authMiddleware);
 
 /**
@@ -37,28 +45,26 @@ urlRouter.use(authMiddleware);
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - originalUrl
- *             properties:
- *               originalUrl:
- *                 type: string
- *               customAlias:
- *                 type: string
- *               expiresAt:
- *                 type: string
- *                 format: date-time
+ *             $ref: '#/components/schemas/CreateUrlRequest'
  *     responses:
  *       201:
  *         description: URL created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
  *       400:
- *         description: Invalid input or alias format
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: Unauthorized
  *       409:
  *         description: Alias already taken
  */
-urlRouter.post("/", urlCreationLimiter, validateUrl, createUrl);
+urlRouter.post("/", urlCreationLimiter, validate(createUrlSchema), createUrl);
 
 /**
  * @swagger
@@ -74,44 +80,26 @@ urlRouter.post("/", urlCreationLimiter, validateUrl, createUrl);
  *         schema:
  *           type: integer
  *           default: 1
- *         description: Page number
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           default: 10
- *         description: Number of items per page (max 100)
  *       - in: query
  *         name: search
  *         schema:
  *           type: string
- *         description: Search query for URLs
  *     responses:
  *       200:
  *         description: Returns a paginated list of URLs
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 page:
- *                   type: integer
- *                 limit:
- *                   type: integer
- *                 total:
- *                   type: integer
- *                 totalPages:
- *                   type: integer
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
+ *               $ref: '#/components/schemas/SuccessResponse'
  *       401:
  *         description: Unauthorized
  */
-urlRouter.get("/", getUserUrls);
+urlRouter.get("/", validate(paginationSchema, "query"), getUserUrls);
 
 /**
  * @swagger
@@ -127,13 +115,14 @@ urlRouter.get("/", getUserUrls);
  *         required: true
  *         schema:
  *           type: string
+ *           format: uuid
  *     responses:
  *       200:
  *         description: Returns URL details
  *       401:
  *         description: Unauthorized
  *       403:
- *         description: Forbidden (Not the owner)
+ *         description: Forbidden
  *       404:
  *         description: URL not found
  */
@@ -153,6 +142,7 @@ urlRouter.get("/:id", verifyUrlOwnership, getUrlDetails);
  *         required: true
  *         schema:
  *           type: string
+ *           format: uuid
  *     responses:
  *       200:
  *         description: URL deleted
@@ -179,23 +169,18 @@ urlRouter.delete("/:id", verifyUrlOwnership, deleteUrl);
  *         required: true
  *         schema:
  *           type: string
+ *           format: uuid
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               customAlias:
- *                 type: string
- *               expiresAt:
- *                 type: string
- *                 format: date-time
+ *             $ref: '#/components/schemas/UpdateUrlRequest'
  *     responses:
  *       200:
  *         description: URL updated
  *       400:
- *         description: Invalid input
+ *         description: Validation error
  *       401:
  *         description: Unauthorized
  *       403:
@@ -205,7 +190,12 @@ urlRouter.delete("/:id", verifyUrlOwnership, deleteUrl);
  *       409:
  *         description: Alias already taken
  */
-urlRouter.patch("/:id", verifyUrlOwnership, updateUrl);
+urlRouter.patch(
+  "/:id",
+  verifyUrlOwnership,
+  validate(updateUrlSchema),
+  updateUrl,
+);
 
 /**
  * @swagger
@@ -221,36 +211,39 @@ urlRouter.patch("/:id", verifyUrlOwnership, updateUrl);
  *         required: true
  *         schema:
  *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
  *     responses:
  *       200:
  *         description: Returns URL analytics
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   type: object
- *                   properties:
- *                     totalClicks:
- *                       type: integer
- *                     uniqueVisitors:
- *                       type: integer
- *                     clicksPerDay:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           date:
- *                             type: string
- *                           clicks:
- *                             type: integer
- *                     recentVisits:
- *                       type: array
- *                       items:
- *                         type: object
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *             example:
+ *               success: true
+ *               data:
+ *                 totalClicks: 100
+ *                 uniqueVisitors: 45
+ *                 clicksPerDay:
+ *                   - date: "2026-05-31"
+ *                     clicks: 17
+ *                 browserStats:
+ *                   Chrome: 80
+ *                   Firefox: 15
+ *                   Safari: 5
+ *                 topReferrers:
+ *                   - referrer: google.com
+ *                     clicks: 40
  *       401:
  *         description: Unauthorized
  *       403:
@@ -258,6 +251,80 @@ urlRouter.patch("/:id", verifyUrlOwnership, updateUrl);
  *       404:
  *         description: URL not found
  */
-urlRouter.get("/:id/analytics", verifyUrlOwnership, getUrlAnalytics);
+urlRouter.get(
+  "/:id/analytics",
+  verifyUrlOwnership,
+  validate(analyticsQuerySchema, "query"),
+  getUrlAnalytics,
+);
+
+/**
+ * @swagger
+ * /api/v1/urls/{id}/export:
+ *   get:
+ *     summary: Export analytics as CSV
+ *     tags: [URLs]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: CSV file download
+ *         content:
+ *           text/csv:
+ *             schema:
+ *               type: string
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: URL not found
+ */
+urlRouter.get("/:id/export", verifyUrlOwnership, exportUrlAnalytics);
+
+/**
+ * @swagger
+ * /api/v1/urls/{id}/qr:
+ *   get:
+ *     summary: Generate QR code for a short URL
+ *     tags: [URLs]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: format
+ *         schema:
+ *           type: string
+ *           enum: [png, base64]
+ *           default: png
+ *     responses:
+ *       200:
+ *         description: QR code image or base64 payload
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: URL not found
+ */
+urlRouter.get(
+  "/:id/qr",
+  verifyUrlOwnership,
+  validate(qrQuerySchema, "query"),
+  getUrlQrCode,
+);
 
 export default urlRouter;
