@@ -16,30 +16,28 @@ const authMiddleware = async (req, res, next) => {
   if (!secret)
     return res.status(500).json({ message: "JWT secret not configured" });
 
-  // Verify the token
+  // Verify the token and user
   try {
     const decoded = jwt.verify(token, secret);
+    const userId = decoded?.id || decoded?.userId || decoded?.sub;
 
-    // Verify the user exists in the database using Prisma. JWT payload must include user identifier like decoded.id.
-    try {
-      const userId = decoded?.id || decoded?.userId || decoded?.sub;
-      if (!userId)
-        return res.status(401).json({ message: "Invalid token payload" });
+    if (!userId)
+      return res.status(401).json({ message: "Invalid token payload" });
 
-      const user = await prisma.user.findUnique({ where: { id: userId } });
-      if (!user) return res.status(401).json({ message: "User not found" });
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(401).json({ message: "User not found" });
 
-      req.user = user;
-
-      // Proceed to next middleware or route handler after successful authentication and user verification
-      next();
-    } catch (dbErr) {
-      return res.status(500).json({ message: "Database error" });
-    }
+    req.user = user;
+    next();
   } catch (err) {
-    const message =
-      err.name === "TokenExpiredError" ? "Token expired" : "Invalid token";
-    return res.status(401).json({ message });
+    if (err.name === "TokenExpiredError") {
+      return res.status(401).json({ message: "Token expired" });
+    } else if (err.name === "JsonWebTokenError") {
+      return res.status(401).json({ message: "Invalid token" });
+    }
+    
+    // Pass any other errors (like database connection issues) to the error handler
+    next(err);
   }
 };
 
