@@ -24,11 +24,23 @@ export const createUrl = async (req, res, next) => {
 export const getUserUrls = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const urls = await urlService.getUserUrls(userId);
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = Math.min(parseInt(req.query.limit, 10) || 10, 100);
+    const search = req.query.search || "";
+
+    const { urls, total, totalPages } = await urlService.getUserUrls(userId, {
+      page,
+      limit,
+      search,
+    });
 
     return res.status(200).json({
       success: true,
-      urls,
+      page,
+      limit,
+      total,
+      totalPages,
+      data: urls,
     });
   } catch (error) {
     next(error);
@@ -95,6 +107,25 @@ export const redirectToOriginalUrl = async (req, res, next) => {
 
     // Redirect to the original URL
     return res.redirect(originalUrl);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateUrl = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { customAlias, expiresAt } = req.body;
+
+    const updatedUrl = await urlService.updateUrl(id, {
+      customAlias,
+      expiresAt,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: updatedUrl,
+    });
   } catch (error) {
     next(error);
   }

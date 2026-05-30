@@ -98,11 +98,33 @@ export const getOriginalUrlByShortCode = async (shortCode, reqInfo) => {
   return url.originalUrl;
 };
 
-export const getUserUrls = async (userId) => {
-  return await prisma.url.findMany({
-    where: { userId },
-    orderBy: { createdAt: "desc" },
-  });
+export const getUserUrls = async (userId, { page, limit, search }) => {
+  const skip = (page - 1) * limit;
+
+  const where = {
+    userId,
+    ...(search && {
+      OR: [
+        { originalUrl: { contains: search, mode: "insensitive" } },
+        { shortCode: { contains: search, mode: "insensitive" } },
+        { customAlias: { contains: search, mode: "insensitive" } },
+      ],
+    }),
+  };
+
+  const [total, urls] = await prisma.$transaction([
+    prisma.url.count({ where }),
+    prisma.url.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+    }),
+  ]);
+
+  const totalPages = Math.ceil(total / limit);
+
+  return { urls, total, totalPages };
 };
 
 export const deleteUrl = async (id) => {
@@ -110,6 +132,48 @@ export const deleteUrl = async (id) => {
     prisma.analytics.deleteMany({ where: { urlId: id } }),
     prisma.url.delete({ where: { id } }),
   ]);
+};
+
+export const updateUrl = async (id, updates) => {
+  const { customAlias, expiresAt } = updates;
+  const data = {};
+
+  if (customAlias) {
+    const lowerAlias = customAlias.toLowerCase();
+    const aliasRegex = /^[a-zA-Z0-9_-]+$/;
+    if (!aliasRegex.test(lowerAlias))
+      throw new AppError(
+        "Invalid custom alias. Only alphanumeric characters, dashes, and underscores are allowed.",
+        400,
+      );
+    if (lowerAlias.length < 3 || lowerAlias.length > 50)
+      throw new AppError("Alias must be between 3 and 50 characters", 400);
+    if (RESERVED_KEYWORDS.includes(lowerAlias))
+      throw new AppError("Custom alias is a reserved keyword.", 400);
+
+    const existing = await prisma.url.findFirst({
+      where: {
+        OR: [{ shortCode: lowerAlias }, { customAlias: lowerAlias }],
+        id: { not: id },
+      },
+    });
+    if (existing) throw new AppError("Alias already taken", 409);
+
+    data.customAlias = lowerAlias;
+    data.shortCode = lowerAlias;
+  }
+
+  if (expiresAt !== undefined) {
+    if (expiresAt && new Date(expiresAt) <= new Date()) {
+      throw new AppError("Expiration must be a future date", 400);
+    }
+    data.expiresAt = expiresAt ? new Date(expiresAt) : null;
+  }
+
+  return await prisma.url.update({
+    where: { id },
+    data,
+  });
 };
 
 export const getUrlAnalytics = async (id) => {
@@ -127,9 +191,24 @@ export const getUrlAnalytics = async (id) => {
     take: 10,
   });
 
+  const clicksPerDayRaw = await prisma.$queryRaw`
+    SELECT TO_CHAR("clickedAt", 'YYYY-MM-DD') as date, CAST(COUNT(*) AS INTEGER) as clicks
+    FROM "analytics"
+    WHERE "urlId" = ${id}
+    GROUP BY TO_CHAR("clickedAt", 'YYYY-MM-DD')
+    ORDER BY date ASC
+  `;
+
+  // Format to regular objects instead of Prisma raw response objects
+  const clicksPerDay = clicksPerDayRaw.map((row) => ({
+    date: row.date,
+    clicks: Number(row.clicks),
+  }));
+
   return {
     totalClicks,
     uniqueVisitors,
+    clicksPerDay,
     recentVisits,
   };
 };
