@@ -58,16 +58,13 @@ const errorMiddleware = (err, req, res, next) => {
       error.statusCode = 400;
     }
 
-    if (err.message?.includes("not allowed by CORS")) {
-      error.statusCode = 403;
-    }
+    if (err.message?.includes("not allowed by CORS")) error.statusCode = 403;
 
-    sendError(
-      res,
-      error.statusCode || 500,
-      error.message || "Server Error",
-      req?.id,
-    );
+    const statusCode = error.statusCode || 500;
+    const message =
+      statusCode >= 500 ? "Internal server error" : error.message || "Error";
+
+    sendError(res, statusCode, message, req?.id);
   } catch (error) {
     next(error);
   }

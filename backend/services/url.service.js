@@ -20,22 +20,51 @@ import {
   invalidateUrlCache,
   setCachedUrl,
 } from "./cache.service.js";
+import { logger } from "../utils/logger.js";
+
+const isValidCachedUrl = (cached) =>
+  cached &&
+  typeof cached === "object" &&
+  typeof cached.id === "string" &&
+  typeof cached.originalUrl === "string";
+
+const findUrlByShortCode = (code) => {
+  const normalized = code.toLowerCase();
+
+  return prisma.url.findFirst({
+    where: {
+      OR: [
+        { shortCode: { equals: normalized, mode: "insensitive" } },
+        { customAlias: { equals: normalized, mode: "insensitive" } },
+      ],
+    },
+  });
+};
 
 const trackClickAndAnalytics = async (urlId, reqInfo) => {
-  await prisma.$transaction([
-    prisma.url.update({
-      where: { id: urlId },
-      data: { clicks: { increment: 1 } },
-    }),
-    prisma.analytics.create({
-      data: {
-        urlId,
-        ipAddress: reqInfo.ip,
-        userAgent: reqInfo.userAgent,
-        referrer: reqInfo.referrer,
-      },
-    }),
-  ]);
+  if (!urlId || typeof urlId !== "string") return;
+
+  try {
+    await prisma.$transaction([
+      prisma.url.update({
+        where: { id: urlId },
+        data: { clicks: { increment: 1 } },
+      }),
+      prisma.analytics.create({
+        data: {
+          urlId,
+          ipAddress: reqInfo.ip ?? null,
+          userAgent: reqInfo.userAgent ?? null,
+          referrer: reqInfo.referrer ?? null,
+        },
+      }),
+    ]);
+  } catch (error) {
+    logger.warn("Failed to record click analytics", {
+      urlId,
+      message: error.message,
+    });
+  }
 };
 
 export const createShortUrl = async (
@@ -62,10 +91,10 @@ export const createShortUrl = async (
     customAlias = normalizedAlias;
     shortCode = normalizedAlias;
   } else {
-    shortCode = nanoid(SHORT_CODE_LENGTH);
+    shortCode = nanoid(SHORT_CODE_LENGTH).toLowerCase();
     let existing = await prisma.url.findUnique({ where: { shortCode } });
     while (existing) {
-      shortCode = nanoid(SHORT_CODE_LENGTH);
+      shortCode = nanoid(SHORT_CODE_LENGTH).toLowerCase();
       existing = await prisma.url.findUnique({ where: { shortCode } });
     }
   }
@@ -89,7 +118,7 @@ export const getOriginalUrlByShortCode = async (shortCode, reqInfo) => {
   const lowerShortCode = shortCode.toLowerCase();
 
   const cached = await getCachedUrl(lowerShortCode);
-  if (cached) {
+  if (isValidCachedUrl(cached)) {
     try {
       assertNotExpired(cached.expiresAt);
     } catch (error) {
@@ -101,11 +130,9 @@ export const getOriginalUrlByShortCode = async (shortCode, reqInfo) => {
     return cached.originalUrl;
   }
 
-  const url = await prisma.url.findFirst({
-    where: {
-      OR: [{ shortCode: lowerShortCode }, { customAlias: lowerShortCode }],
-    },
-  });
+  if (cached) await deleteCachedUrl(lowerShortCode);
+
+  const url = await findUrlByShortCode(lowerShortCode);
 
   if (!url) return null;
 
@@ -120,7 +147,11 @@ export const getOriginalUrlByShortCode = async (shortCode, reqInfo) => {
 export const buildRedirectRequestInfo = (req) => ({
   ip: req.ip || req.socket?.remoteAddress,
   userAgent: req.headers["user-agent"],
-  referrer: extractReferrerDomain(req.headers.referer || req.headers.referrer),
+  referrer: extractReferrerDomain(
+    typeof req.get === "function"
+      ? req.get("referer") || req.get("referrer")
+      : req.headers.referer || req.headers.referrer,
+  ),
 });
 
 export const getUserUrls = async (userId, { page, limit, search }) => {
@@ -286,13 +317,13 @@ export const getUrlAnalytics = async (id, { startDate, endDate } = {}) => {
   `;
 
   const topReferrersRaw = await prisma.$queryRaw`
-    SELECT referrer, CAST(COUNT(*) AS INTEGER) AS clicks
+    SELECT "referrer" AS source, CAST(COUNT(*) AS INTEGER) AS count
     FROM "analytics"
     WHERE "urlId" = ${id}
-      AND referrer IS NOT NULL
+      AND "referrer" IS NOT NULL
       ${dateSql}
-    GROUP BY referrer
-    ORDER BY clicks DESC
+    GROUP BY "referrer"
+    ORDER BY count DESC, source ASC
     LIMIT 10
   `;
 

@@ -14,10 +14,24 @@ const serializeCachedUrl = (urlRecord) => ({
     : null,
 });
 
+const parseCachedUrl = (value) => {
+  if (!value) return null;
+
+  if (typeof value === "string")
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+
+  return value;
+};
+
 export const getCachedUrl = async (shortCode) => {
   try {
     const redis = getRedis();
-    return await redis.get(buildUrlCacheKey(shortCode));
+    const value = await redis.get(buildUrlCacheKey(shortCode));
+    return parseCachedUrl(value);
   } catch (error) {
     logger.warn("Redis cache read failed", { message: error.message });
     return null;

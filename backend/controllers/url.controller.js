@@ -2,6 +2,7 @@ import * as urlService from "../services/url.service.js";
 import { streamAnalyticsCsv } from "../services/export.service.js";
 import { buildShortUrl, generateQrCode } from "../services/qr.service.js";
 import { APP_BASE_URL } from "../config/env.js";
+import { SHORT_CODE_PATTERN } from "../constants/url.constants.js";
 import { sendSuccess, sendError } from "../utils/response.js";
 
 export const createUrl = async (req, res, next) => {
@@ -109,6 +110,10 @@ export const getUrlQrCode = async (req, res, next) => {
 export const redirectToOriginalUrl = async (req, res, next) => {
   try {
     const { shortCode } = req.params;
+
+    if (!SHORT_CODE_PATTERN.test(shortCode))
+      return sendError(res, 404, "Short URL not found", req.id);
+
     const reqInfo = urlService.buildRedirectRequestInfo(req);
 
     const originalUrl = await urlService.getOriginalUrlByShortCode(

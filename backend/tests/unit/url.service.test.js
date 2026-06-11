@@ -71,6 +71,54 @@ describe("url service", () => {
     expect(result).toBeNull();
   });
 
+  it("resolves short codes case-insensitively", async () => {
+    prismaMock.url.findFirst.mockResolvedValue({
+      id: "url-1",
+      originalUrl: "https://example.com",
+      shortCode: "AbC123",
+      expiresAt: null,
+    });
+    prismaMock.$transaction.mockResolvedValue([]);
+
+    const result = await urlService.getOriginalUrlByShortCode("abc123", {
+      ip: "127.0.0.1",
+      userAgent: "test",
+      referrer: null,
+    });
+
+    expect(result).toBe("https://example.com");
+    expect(prismaMock.url.findFirst).toHaveBeenCalledWith({
+      where: {
+        OR: [
+          { shortCode: { equals: "abc123", mode: "insensitive" } },
+          { customAlias: { equals: "abc123", mode: "insensitive" } },
+        ],
+      },
+    });
+  });
+
+  it("ignores invalid cache entries and falls back to the database", async () => {
+    cacheService.getCachedUrl.mockResolvedValue({
+      originalUrl: "https://bad-cache.com",
+    });
+    prismaMock.url.findFirst.mockResolvedValue({
+      id: "url-1",
+      originalUrl: "https://example.com",
+      shortCode: "abc123",
+      expiresAt: null,
+    });
+    prismaMock.$transaction.mockResolvedValue([]);
+
+    const result = await urlService.getOriginalUrlByShortCode("abc123", {
+      ip: "127.0.0.1",
+      userAgent: "test",
+      referrer: null,
+    });
+
+    expect(result).toBe("https://example.com");
+    expect(cacheService.deleteCachedUrl).toHaveBeenCalledWith("abc123");
+  });
+
   it("uses cache on redirect hit", async () => {
     cacheService.getCachedUrl.mockResolvedValue({
       id: "url-1",
@@ -101,10 +149,14 @@ describe("url service", () => {
         "user-agent": "Chrome",
         referer: "https://www.google.com/search",
       },
+      get: vi.fn((header) =>
+        header === "referer" ? "https://www.google.com/search" : undefined,
+      ),
     };
 
     const info = urlService.buildRedirectRequestInfo(req);
     expect(info.referrer).toBe("google.com");
+    expect(req.get).toHaveBeenCalledWith("referer");
   });
 
   it("updates expiration date", async () => {
@@ -134,12 +186,15 @@ describe("url service", () => {
     prismaMock.$queryRaw
       .mockResolvedValueOnce([{ date: "2026-05-31", clicks: 5 }])
       .mockResolvedValueOnce([{ browser: "Chrome", clicks: 5 }])
-      .mockResolvedValueOnce([{ referrer: "google.com", clicks: 3 }]);
+      .mockResolvedValueOnce([{ source: "google.com", count: 3 }]);
 
     const analytics = await urlService.getUrlAnalytics("url-1");
 
     expect(analytics.totalClicks).toBe(10);
     expect(analytics.browserStats.Chrome).toBe(5);
-    expect(analytics.topReferrers[0].referrer).toBe("google.com");
+    expect(analytics.topReferrers[0]).toEqual({
+      source: "google.com",
+      count: 3,
+    });
   });
 });

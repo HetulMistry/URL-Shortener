@@ -102,4 +102,15 @@ describe("error middleware", () => {
     errorMiddleware(validation, req, res, vi.fn());
     expect(res.statusCode).toBe(400);
   });
+
+  it("does not expose unexpected server error messages", () => {
+    const err = new Error("database password leaked in stack");
+    const req = { id: "req-4" };
+    const res = createResponse();
+
+    errorMiddleware(err, req, res, vi.fn());
+
+    expect(res.statusCode).toBe(500);
+    expect(res.body.error.message).toBe("Internal server error");
+  });
 });

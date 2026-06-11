@@ -18,11 +18,13 @@ export const parseBrowserFromUserAgent = (userAgent) => {
 };
 
 export const extractReferrerDomain = (referrer) => {
-  if (!referrer) return null;
+  if (!referrer || typeof referrer !== "string") return null;
 
   try {
-    const url = new URL(referrer);
-    return url.hostname.replace(/^www\./i, "");
+    const url = new URL(referrer.trim());
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+
+    return url.hostname.toLowerCase().replace(/^www\./i, "") || null;
   } catch {
     return null;
   }
@@ -38,6 +40,6 @@ export const formatBrowserStats = (rows) => {
 
 export const formatTopReferrers = (rows) =>
   rows.map((row) => ({
-    referrer: row.referrer,
-    clicks: Number(row.clicks),
+    source: row.source ?? row.referrer,
+    count: Number(row.count ?? row.clicks),
   }));

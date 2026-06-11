@@ -17,10 +17,10 @@ export default defineConfig({
         "config/env.js",
       ],
       thresholds: {
-        lines: 70,
-        functions: 70,
+        lines: 80,
+        functions: 80,
         branches: 70,
-        statements: 70,
+        statements: 80,
       },
     },
   },

@@ -32,24 +32,22 @@ const createApp = () => {
    *     tags: [Health]
    *     responses:
    *       200:
-   *         description: Service is healthy or degraded
+   *         description: Service is healthy
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: '#/components/schemas/SuccessResponse'
+   *               $ref: '#/components/schemas/HealthResponse'
    *             example:
-   *               success: true
-   *               data:
-   *                 status: healthy
-   *                 database: connected
-   *                 redis: connected
-   *                 uptime: 1234
+   *               status: healthy
+   *               database: connected
+   *               redis: connected
+   *               uptime: 1234
    *       503:
-   *         description: Service is unhealthy
+   *         description: Service is degraded or unhealthy
    *         content:
    *           application/json:
    *             schema:
-   *               $ref: '#/components/schemas/SuccessResponse'
+   *               $ref: '#/components/schemas/HealthResponse'
    */
   app.get("/health", getHealth);
 

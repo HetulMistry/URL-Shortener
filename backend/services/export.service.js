@@ -1,50 +1,78 @@
 import prisma from "../config/client.js";
 
-const escapeCsvValue = (value) => {
-  const stringValue = value ?? "";
-  if (/[",\n]/.test(stringValue)) return `"${stringValue.replace(/"/g, '""')}"`;
+const escapeCSV = (value) => {
+  if (value === null || value === undefined) return "";
+  const stringValue = String(value);
+  if (
+    stringValue.includes(",") ||
+    stringValue.includes('"') ||
+    stringValue.includes("\n")
+  )
+    return `"${stringValue.replace(/"/g, '""')}"`;
 
   return stringValue;
 };
 
+const convertToCSV = (data) => {
+  if (!data || data.length === 0) return "";
+
+  const headers = Object.keys(data[0]);
+  const csvHeaders = headers.map(escapeCSV).join(",");
+
+  const csvRows = data.map((row) => {
+    return headers.map((header) => escapeCSV(row[header])).join(",");
+  });
+
+  return [csvHeaders, ...csvRows].join("\n");
+};
+
 export const streamAnalyticsCsv = async (urlId, res) => {
-  res.setHeader("Content-Type", "text/csv");
-  res.setHeader(
-    "Content-Disposition",
-    `attachment; filename="analytics-${urlId}.csv"`,
-  );
-
-  res.write("Date,IP Address,User Agent,Referrer,Timestamp\n");
-
-  const batchSize = 500;
-  let skip = 0;
-
-  while (true) {
-    const records = await prisma.analytics.findMany({
-      where: { urlId },
-      orderBy: { clickedAt: "asc" },
-      take: batchSize,
-      skip,
+  try {
+    const urlData = await prisma.url.findUnique({
+      where: { id: urlId },
+      include: {
+        analytics: {
+          orderBy: { timestamp: "desc" },
+          take: 1000,
+        },
+      },
     });
 
-    if (records.length === 0) break;
+    if (!urlData) throw new Error("URL not found");
 
-    for (const record of records) {
-      const date = record.clickedAt.toISOString().slice(0, 10);
-      const row = [
-        escapeCsvValue(date),
-        escapeCsvValue(record.ipAddress),
-        escapeCsvValue(record.userAgent),
-        escapeCsvValue(record.referrer),
-        escapeCsvValue(record.clickedAt.toISOString()),
-      ].join(",");
+    const csvData = [
+      {
+        "Short Code": urlData.shortCode,
+        "Original URL": urlData.originalUrl,
+        "Total Clicks": urlData.clicks,
+        "Unique Visitors": urlData.uniqueVisitors,
+        "Created At": new Date(urlData.createdAt).toISOString(),
+        "Expires At": urlData.expiresAt
+          ? new Date(urlData.expiresAt).toISOString()
+          : "Never",
+      },
+    ];
 
-      res.write(`${row}\n`);
+    if (urlData.analytics && urlData.analytics.length > 0) {
+      const analyticsData = urlData.analytics.map((a) => ({
+        Timestamp: new Date(a.timestamp).toISOString(),
+        Browser: a.browser || "Unknown",
+        Referrer: a.referrer || "Direct",
+        "User Agent": a.userAgent || "Unknown",
+      }));
+
+      csvData.push({}, ...analyticsData);
     }
 
-    skip += records.length;
-    if (records.length < batchSize) break;
-  }
+    const csv = convertToCSV(csvData);
 
-  res.end();
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="analytics-${urlId}-${Date.now()}.csv"`,
+    );
+    res.send(csv);
+  } catch (error) {
+    throw error;
+  }
 };

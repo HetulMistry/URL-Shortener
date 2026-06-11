@@ -63,5 +63,6 @@ model Analytics {
 
   @@index([urlId])
   @@index([referrer])
+  @@index([urlId, referrer])
   @@map("analytics")
 }

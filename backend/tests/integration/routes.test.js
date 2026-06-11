@@ -62,6 +62,9 @@ vi.mock("bcrypt", () => ({
 }));
 
 const { default: createApp } = await import("../../app.js");
+const { checkRedisConnection } = await import("../../config/redis.js");
+
+const testUrlId = "11111111-1111-4111-8111-111111111111";
 
 describe("integration routes", () => {
   let app;
@@ -73,15 +76,42 @@ describe("integration routes", () => {
     vi.resetAllMocks();
   });
 
-  it("GET /health returns standardized success response", async () => {
+  it("GET /health returns monitoring-friendly health response", async () => {
     prismaMock.$queryRaw.mockResolvedValue([{ "?column?": 1 }]);
+    checkRedisConnection.mockResolvedValue(true);
 
     const response = await request(app).get("/health");
 
     expect(response.status).toBe(200);
-    expect(response.body.success).toBe(true);
-    expect(response.body.data.status).toBeDefined();
+    expect(response.body).toMatchObject({
+      status: "healthy",
+      database: "connected",
+      redis: "connected",
+    });
+    expect(response.body.uptime).toEqual(expect.any(Number));
     expect(response.headers["x-request-id"]).toBeDefined();
+  });
+
+  it("GET /health returns 503 when a dependency is degraded", async () => {
+    prismaMock.$queryRaw.mockResolvedValue([{ "?column?": 1 }]);
+    checkRedisConnection.mockResolvedValue(false);
+
+    const response = await request(app).get("/health");
+
+    expect(response.status).toBe(503);
+    expect(response.body.status).toBe("degraded");
+  });
+
+  it("sets security headers on responses", async () => {
+    prismaMock.$queryRaw.mockResolvedValue([{ "?column?": 1 }]);
+    checkRedisConnection.mockResolvedValue(true);
+
+    const response = await request(app).get("/health");
+
+    expect(response.headers["content-security-policy"]).toBeDefined();
+    expect(response.headers["x-frame-options"]).toBeDefined();
+    expect(response.headers["x-content-type-options"]).toBe("nosniff");
+    expect(response.headers["referrer-policy"]).toBeDefined();
   });
 
   it("POST /api/v1/auth/register validates payload", async () => {
@@ -164,7 +194,7 @@ describe("integration routes", () => {
     prismaMock.user.findUnique.mockResolvedValue(testUser);
     prismaMock.url.findUnique.mockResolvedValue(null);
     prismaMock.url.create.mockResolvedValue({
-      id: "url-1",
+      id: testUrlId,
       shortCode: "abc123",
       originalUrl: "https://example.com",
       userId: testUser.id,
@@ -197,14 +227,14 @@ describe("integration routes", () => {
   it("GET /api/v1/urls/:id returns url details", async () => {
     prismaMock.user.findUnique.mockResolvedValue(testUser);
     prismaMock.url.findUnique.mockResolvedValue({
-      id: "url-1",
+      id: testUrlId,
       shortCode: "abc123",
       originalUrl: "https://example.com",
       userId: testUser.id,
     });
 
     const response = await request(app)
-      .get("/api/v1/urls/url-1")
+      .get(`/api/v1/urls/${testUrlId}`)
       .set("Authorization", `Bearer ${authToken}`);
 
     expect(response.status).toBe(200);
@@ -215,26 +245,26 @@ describe("integration routes", () => {
     prismaMock.user.findUnique.mockResolvedValue(testUser);
     prismaMock.url.findUnique
       .mockResolvedValueOnce({
-        id: "url-1",
+        id: testUrlId,
         shortCode: "abc123",
         customAlias: null,
         userId: testUser.id,
       })
       .mockResolvedValueOnce({
-        id: "url-1",
+        id: testUrlId,
         shortCode: "abc123",
         customAlias: null,
         userId: testUser.id,
       })
       .mockResolvedValueOnce(null);
     prismaMock.url.update.mockResolvedValue({
-      id: "url-1",
+      id: testUrlId,
       shortCode: "new-alias",
       customAlias: "new-alias",
     });
 
     const response = await request(app)
-      .patch("/api/v1/urls/url-1")
+      .patch(`/api/v1/urls/${testUrlId}`)
       .set("Authorization", `Bearer ${authToken}`)
       .send({ customAlias: "new-alias" });
 
@@ -245,9 +275,9 @@ describe("integration routes", () => {
   it("DELETE /api/v1/urls/:id deletes a url", async () => {
     prismaMock.user.findUnique.mockResolvedValue(testUser);
     prismaMock.url.findUnique.mockImplementation(async ({ where }) => {
-      if (where.id === "url-1") {
+      if (where.id === testUrlId) {
         return {
-          id: "url-1",
+          id: testUrlId,
           shortCode: "abc123",
           userId: testUser.id,
         };
@@ -255,11 +285,11 @@ describe("integration routes", () => {
       return null;
     });
     prismaMock.analytics.deleteMany.mockResolvedValue({ count: 0 });
-    prismaMock.url.delete.mockResolvedValue({ id: "url-1" });
+    prismaMock.url.delete.mockResolvedValue({ id: testUrlId });
     prismaMock.$transaction.mockImplementation((ops) => Promise.all(ops));
 
     const response = await request(app)
-      .delete("/api/v1/urls/url-1")
+      .delete(`/api/v1/urls/${testUrlId}`)
       .set("Authorization", `Bearer ${authToken}`);
 
     expect(response.status).toBe(200);
@@ -275,6 +305,17 @@ describe("integration routes", () => {
 
     expect(response.status).toBe(200);
     expect(response.body.data.message).toContain("Logged out");
+  });
+
+  it("GET /api/v1/urls/:id rejects malformed URL ids", async () => {
+    prismaMock.user.findUnique.mockResolvedValue(testUser);
+
+    const response = await request(app)
+      .get("/api/v1/urls/not-a-uuid")
+      .set("Authorization", `Bearer ${authToken}`);
+
+    expect(response.status).toBe(400);
+    expect(prismaMock.url.findUnique).not.toHaveBeenCalled();
   });
 
   it("GET /:shortCode redirects when url exists", async () => {

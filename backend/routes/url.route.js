@@ -19,9 +19,11 @@ import {
   paginationSchema,
   qrQuerySchema,
   updateUrlSchema,
+  urlIdParamSchema,
 } from "../validation/url.schema.js";
 
 const urlRouter = Router();
+const validateUrlId = validate(urlIdParamSchema, "params");
 
 /**
  * @swagger
@@ -126,7 +128,7 @@ urlRouter.get("/", validate(paginationSchema, "query"), getUserUrls);
  *       404:
  *         description: URL not found
  */
-urlRouter.get("/:id", verifyUrlOwnership, getUrlDetails);
+urlRouter.get("/:id", validateUrlId, verifyUrlOwnership, getUrlDetails);
 
 /**
  * @swagger
@@ -153,7 +155,7 @@ urlRouter.get("/:id", verifyUrlOwnership, getUrlDetails);
  *       404:
  *         description: URL not found
  */
-urlRouter.delete("/:id", verifyUrlOwnership, deleteUrl);
+urlRouter.delete("/:id", validateUrlId, verifyUrlOwnership, deleteUrl);
 
 /**
  * @swagger
@@ -192,6 +194,7 @@ urlRouter.delete("/:id", verifyUrlOwnership, deleteUrl);
  */
 urlRouter.patch(
   "/:id",
+  validateUrlId,
   verifyUrlOwnership,
   validate(updateUrlSchema),
   updateUrl,
@@ -228,7 +231,12 @@ urlRouter.patch(
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       $ref: '#/components/schemas/UrlAnalyticsResponse'
  *             example:
  *               success: true
  *               data:
@@ -242,8 +250,8 @@ urlRouter.patch(
  *                   Firefox: 15
  *                   Safari: 5
  *                 topReferrers:
- *                   - referrer: google.com
- *                     clicks: 40
+ *                   - source: google.com
+ *                     count: 40
  *       401:
  *         description: Unauthorized
  *       403:
@@ -253,6 +261,7 @@ urlRouter.patch(
  */
 urlRouter.get(
   "/:id/analytics",
+  validateUrlId,
   verifyUrlOwnership,
   validate(analyticsQuerySchema, "query"),
   getUrlAnalytics,
@@ -287,7 +296,12 @@ urlRouter.get(
  *       404:
  *         description: URL not found
  */
-urlRouter.get("/:id/export", verifyUrlOwnership, exportUrlAnalytics);
+urlRouter.get(
+  "/:id/export",
+  validateUrlId,
+  verifyUrlOwnership,
+  exportUrlAnalytics,
+);
 
 /**
  * @swagger
@@ -322,6 +336,7 @@ urlRouter.get("/:id/export", verifyUrlOwnership, exportUrlAnalytics);
  */
 urlRouter.get(
   "/:id/qr",
+  validateUrlId,
   verifyUrlOwnership,
   validate(qrQuerySchema, "query"),
   getUrlQrCode,

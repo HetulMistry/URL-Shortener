@@ -23,6 +23,10 @@ describe("analytics helpers", () => {
     expect(extractReferrerDomain("https://www.google.com/search?q=test")).toBe(
       "google.com",
     );
+    expect(extractReferrerDomain("HTTPS://WWW.LinkedIn.COM/feed")).toBe(
+      "linkedin.com",
+    );
+    expect(extractReferrerDomain("ftp://example.com/file")).toBeNull();
     expect(extractReferrerDomain("invalid")).toBeNull();
     expect(extractReferrerDomain(null)).toBeNull();
   });
@@ -39,12 +43,12 @@ describe("analytics helpers", () => {
   it("formats top referrers list", () => {
     expect(
       formatTopReferrers([
-        { referrer: "google.com", clicks: 12 },
-        { referrer: "github.com", clicks: 3 },
+        { source: "google.com", count: 12 },
+        { source: "github.com", count: 3 },
       ]),
     ).toEqual([
-      { referrer: "google.com", clicks: 12 },
-      { referrer: "github.com", clicks: 3 },
+      { source: "google.com", count: 12 },
+      { source: "github.com", count: 3 },
     ]);
   });
 });

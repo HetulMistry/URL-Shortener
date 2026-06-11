@@ -47,6 +47,64 @@ const options = {
             },
           },
         },
+        HealthResponse: {
+          type: "object",
+          required: ["status", "database", "redis", "uptime"],
+          properties: {
+            status: {
+              type: "string",
+              enum: ["healthy", "degraded", "unhealthy"],
+              example: "healthy",
+            },
+            database: {
+              type: "string",
+              enum: ["connected", "disconnected"],
+              example: "connected",
+            },
+            redis: {
+              type: "string",
+              enum: ["connected", "disconnected"],
+              example: "connected",
+            },
+            uptime: { type: "integer", example: 1234 },
+          },
+        },
+        UrlAnalyticsResponse: {
+          type: "object",
+          properties: {
+            totalClicks: { type: "integer", example: 100 },
+            uniqueVisitors: { type: "integer", example: 45 },
+            clicksPerDay: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  date: { type: "string", example: "2026-05-31" },
+                  clicks: { type: "integer", example: 17 },
+                },
+              },
+            },
+            recentVisits: {
+              type: "array",
+              items: { type: "object" },
+            },
+            browserStats: {
+              type: "object",
+              additionalProperties: { type: "integer" },
+              example: { Chrome: 80, Firefox: 15, Safari: 5 },
+            },
+            topReferrers: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  source: { type: "string", example: "google.com" },
+                  count: { type: "integer", example: 40 },
+                },
+              },
+            },
+          },
+        },
         RegisterRequest: {
           type: "object",
           required: ["name", "email", "password"],
