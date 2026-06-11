@@ -13,7 +13,7 @@
 
 ### Project Structure
 
-```
+```txt
 backend/
 ├── config/          # Configuration files (env, redis, swagger)
 ├── controllers/     # Request handlers
