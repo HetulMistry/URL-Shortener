@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import winston from "winston";
-import { NODE_ENV } from "../config/env.js";
+import { NODE_ENV, LOG_LEVEL } from "../config/env.js";
 
 const logsDir = path.join(process.cwd(), "logs");
 
@@ -9,6 +9,7 @@ if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
 
 const buildMeta = (meta = {}) => {
   const { requestId, method, route, status, responseTime, ip, ...rest } = meta;
+
   return {
     ...(requestId && { requestId }),
     ...(method && { method }),
@@ -45,7 +46,7 @@ const fileFormat = winston.format.combine(
 );
 
 const logger = winston.createLogger({
-  level: NODE_ENV === "production" ? "info" : "debug",
+  level: LOG_LEVEL || (NODE_ENV === "production" ? "info" : "debug"),
   transports: [
     new winston.transports.Console({ format: consoleFormat }),
     new winston.transports.File({

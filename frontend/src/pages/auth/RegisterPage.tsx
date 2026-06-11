@@ -4,6 +4,12 @@ import { motion } from "framer-motion";
 import { Mail, Lock } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { getApiErrorMessage } from "@/lib/api-error";
+import {
+  validateEmail,
+  validateRegisterName,
+  validateRegisterPassword,
+  validateConfirmPassword,
+} from "@/lib/auth-validation";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -34,34 +40,30 @@ export function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrors({});
 
-    if (!name || !email || !password || !confirmPassword) {
+    const nameError = validateRegisterName(name);
+    const emailError = validateEmail(email);
+    const passwordError = validateRegisterPassword(password);
+    const confirmPasswordError = validateConfirmPassword(
+      password,
+      confirmPassword,
+    );
+
+    if (nameError || emailError || passwordError || confirmPasswordError) {
       setErrors({
-        name: !name ? "Name is required" : undefined,
-        email: !email ? "Email is required" : undefined,
-        password: !password ? "Password is required" : undefined,
-        confirmPassword: !confirmPassword
-          ? "Confirm password is required"
-          : undefined,
+        name: nameError ?? undefined,
+        email: emailError ?? undefined,
+        password: passwordError ?? undefined,
+        confirmPassword: confirmPasswordError ?? undefined,
       });
       return;
     }
 
-    if (password !== confirmPassword) {
-      setErrors({ confirmPassword: "Passwords do not match" });
-      return;
-    }
-
-    if (password.length < 8) {
-      setErrors({ password: "Password must be at least 8 characters" });
-      return;
-    }
-
+    setErrors({});
     setLoading(true);
 
     try {
-      await register(name, email, password);
+      await register(name.trim(), email.trim(), password);
       addToast("Account created successfully!", "success");
       navigate("/dashboard");
     } catch (error: unknown) {
@@ -85,24 +87,13 @@ export function RegisterPage() {
             <CardDescription>Sign up to start shortening URLs</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="relative">
-                <Mail className="absolute left-3 top-10 w-5 h-5 text-gray-400" />
-                <Input
-                  label="Email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  error={errors.email}
-                  className="pl-10"
-                  disabled={loading}
-                />
-              </div>
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               <div>
                 <Input
                   label="Name"
                   type="text"
+                  name="name"
+                  autoComplete="name"
                   placeholder="John Doe"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -111,10 +102,27 @@ export function RegisterPage() {
                 />
               </div>
               <div className="relative">
+                <Mail className="absolute left-3 top-10 w-5 h-5 text-gray-400" />
+                <Input
+                  label="Email"
+                  type="email"
+                  name="email"
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  error={errors.email}
+                  className="pl-10"
+                  disabled={loading}
+                />
+              </div>
+              <div className="relative">
                 <Lock className="absolute left-3 top-10 w-5 h-5 text-gray-400" />
                 <Input
                   label="Password"
                   type="password"
+                  name="password"
+                  autoComplete="new-password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -128,6 +136,8 @@ export function RegisterPage() {
                 <Input
                   label="Confirm Password"
                   type="password"
+                  name="confirmPassword"
+                  autoComplete="new-password"
                   placeholder="••••••••"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -141,8 +151,9 @@ export function RegisterPage() {
                 variant="default"
                 size="lg"
                 className="w-full"
+                disabled={loading}
               >
-                Create Account
+                {loading ? "Creating account..." : "Create Account"}
               </Button>
             </form>
             <div className="mt-6 text-center">

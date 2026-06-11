@@ -1,5 +1,5 @@
 import createApp from "./app.js";
-import { PORT } from "./config/env.js";
+import { PORT, APP_BASE_URL, NODE_ENV } from "./config/env.js";
 import prisma from "./config/client.js";
 import { flushLogs, logger } from "./utils/logger.js";
 
@@ -7,8 +7,10 @@ const app = createApp();
 let isShuttingDown = false;
 
 const server = app.listen(PORT, () => {
-  logger.info(`Server is running on port http://localhost:${PORT}`, {
+  logger.info("Server started", {
     port: PORT,
+    env: NODE_ENV,
+    baseUrl: APP_BASE_URL,
   });
 });
 

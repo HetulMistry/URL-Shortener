@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Mail, Lock } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { getApiErrorMessage } from "@/lib/api-error";
+import { validateEmail, validateLoginPassword } from "@/lib/auth-validation";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -29,19 +30,23 @@ export function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrors({});
 
-    if (!email || !password) {
+    const emailError = validateEmail(email);
+    const passwordError = validateLoginPassword(password);
+
+    if (emailError || passwordError) {
       setErrors({
-        email: !email ? "Email is required" : undefined,
-        password: !password ? "Password is required" : undefined,
+        email: emailError ?? undefined,
+        password: passwordError ?? undefined,
       });
       return;
     }
 
+    setErrors({});
     setLoading(true);
+
     try {
-      await login(email, password);
+      await login(email.trim(), password);
       addToast("Login successful!", "success");
       navigate("/dashboard");
     } catch (error: unknown) {
@@ -67,12 +72,14 @@ export function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               <div className="relative">
                 <Mail className="absolute left-3 top-10 w-5 h-5 text-gray-400" />
                 <Input
                   label="Email"
                   type="email"
+                  name="email"
+                  autoComplete="email"
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -86,6 +93,8 @@ export function LoginPage() {
                 <Input
                   label="Password"
                   type="password"
+                  name="password"
+                  autoComplete="current-password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -99,8 +108,9 @@ export function LoginPage() {
                 variant="default"
                 size="lg"
                 className="w-full"
+                disabled={loading}
               >
-                Sign In
+                {loading ? "Signing in..." : "Sign In"}
               </Button>
             </form>
             <div className="mt-6 text-center">

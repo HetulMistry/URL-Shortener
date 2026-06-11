@@ -1,8 +1,12 @@
 import prisma from "../config/client.js";
+import { parseBrowserFromUserAgent } from "../utils/analytics.helpers.js";
+import AppError from "../utils/AppError.js";
 
 const escapeCSV = (value) => {
   if (value === null || value === undefined) return "";
+
   const stringValue = String(value);
+
   if (
     stringValue.includes(",") ||
     stringValue.includes('"') ||
@@ -19,60 +23,62 @@ const convertToCSV = (data) => {
   const headers = Object.keys(data[0]);
   const csvHeaders = headers.map(escapeCSV).join(",");
 
-  const csvRows = data.map((row) => {
-    return headers.map((header) => escapeCSV(row[header])).join(",");
-  });
+  const csvRows = data.map((row) =>
+    headers.map((header) => escapeCSV(row[header])).join(","),
+  );
 
   return [csvHeaders, ...csvRows].join("\n");
 };
 
 export const streamAnalyticsCsv = async (urlId, res) => {
-  try {
-    const urlData = await prisma.url.findUnique({
-      where: { id: urlId },
-      include: {
-        analytics: {
-          orderBy: { timestamp: "desc" },
-          take: 1000,
-        },
+  const urlData = await prisma.url.findUnique({
+    where: { id: urlId },
+    include: {
+      analytics: {
+        orderBy: { clickedAt: "desc" },
+        take: 1000,
       },
-    });
+    },
+  });
 
-    if (!urlData) throw new Error("URL not found");
+  if (!urlData) throw new AppError("URL not found", 404);
 
-    const csvData = [
-      {
-        "Short Code": urlData.shortCode,
-        "Original URL": urlData.originalUrl,
-        "Total Clicks": urlData.clicks,
-        "Unique Visitors": urlData.uniqueVisitors,
-        "Created At": new Date(urlData.createdAt).toISOString(),
-        "Expires At": urlData.expiresAt
-          ? new Date(urlData.expiresAt).toISOString()
-          : "Never",
-      },
-    ];
+  const uniqueVisitors = new Set(
+    urlData.analytics.map((row) => row.ipAddress).filter(Boolean),
+  ).size;
 
-    if (urlData.analytics && urlData.analytics.length > 0) {
-      const analyticsData = urlData.analytics.map((a) => ({
-        Timestamp: new Date(a.timestamp).toISOString(),
-        Browser: a.browser || "Unknown",
-        Referrer: a.referrer || "Direct",
-        "User Agent": a.userAgent || "Unknown",
-      }));
+  const summaryCsv = convertToCSV([
+    {
+      "Short Code": urlData.shortCode,
+      "Original URL": urlData.originalUrl,
+      "Total Clicks": urlData.clicks,
+      "Unique Visitors": uniqueVisitors,
+      "Created At": new Date(urlData.createdAt).toISOString(),
+      "Expires At": urlData.expiresAt
+        ? new Date(urlData.expiresAt).toISOString()
+        : "Never",
+    },
+  ]);
 
-      csvData.push({}, ...analyticsData);
-    }
+  const visitsCsv =
+    urlData.analytics.length > 0
+      ? `\n\n${convertToCSV(
+          urlData.analytics.map((row) => ({
+            Timestamp: new Date(row.clickedAt).toISOString(),
+            Browser: parseBrowserFromUserAgent(row.userAgent),
+            Referrer: row.referrer || "Direct",
+            "IP Address": row.ipAddress || "Unknown",
+            "User Agent": row.userAgent || "Unknown",
+          })),
+        )}`
+      : "";
 
-    const csv = convertToCSV(csvData);
+  const csv = `${summaryCsv}${visitsCsv}`;
 
-    res.setHeader("Content-Type", "text/csv; charset=utf-8");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="analytics-${urlId}-${Date.now()}.csv"`,
-    );
-    res.send(csv);
-  } catch (error) {
-    throw error;
-  }
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="analytics-${urlId}-${Date.now()}.csv"`,
+  );
+  res.send(csv);
 };

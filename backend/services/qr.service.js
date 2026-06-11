@@ -1,4 +1,5 @@
 import QRCode from "qrcode";
+import AppError from "../utils/AppError.js";
 
 export const generateQrCode = async (text, format = "base64") => {
   try {
@@ -9,7 +10,8 @@ export const generateQrCode = async (text, format = "base64") => {
         quality: 0.95,
         margin: 1,
       });
-    else if (format === "png")
+
+    if (format === "png")
       return await QRCode.toBuffer(text, {
         errorCorrectionLevel: "H",
         type: "image/png",
@@ -22,5 +24,9 @@ export const generateQrCode = async (text, format = "base64") => {
 };
 
 export const buildShortUrl = (baseUrl, shortCode) => {
-  return `${baseUrl}/${shortCode}`;
+  if (!baseUrl?.trim())
+    throw new AppError("APP_BASE_URL is not configured", 500);
+
+  const normalizedBase = baseUrl.replace(/\/+$/, "");
+  return `${normalizedBase}/${shortCode}`;
 };

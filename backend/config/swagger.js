@@ -1,5 +1,13 @@
-import { PORT } from "./env.js";
+import { APP_BASE_URL, NODE_ENV, PORT } from "./env.js";
 import swaggerJSDocs from "swagger-jsdoc";
+
+const serverUrl =
+  APP_BASE_URL ||
+  (NODE_ENV === "production" ? undefined : `http://localhost:${PORT}`);
+
+const servers = serverUrl
+  ? [{ url: serverUrl, description: `${NODE_ENV} server` }]
+  : [];
 
 const options = {
   definition: {
@@ -10,12 +18,7 @@ const options = {
       description:
         "Production-ready API documentation for URL Shortener backend.",
     },
-    servers: [
-      {
-        url: `http://localhost:${PORT}`,
-        description: "Local development server",
-      },
-    ],
+    servers,
     components: {
       securitySchemes: {
         BearerAuth: {
