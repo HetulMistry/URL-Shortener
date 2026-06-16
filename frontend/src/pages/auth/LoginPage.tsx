@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Mail, Lock } from "lucide-react";
+import { Mail, Lock, Link as LinkIcon } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { validateEmail, validateLoginPassword } from "@/lib/auth-validation";
@@ -15,6 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/Card";
+import { DotGridBackground } from "@/components/ui/shared/DotGridBackground";
 
 export function LoginPage() {
   const [email, setEmail] = useState("");
@@ -57,57 +58,63 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-section-shell to-black flex items-center justify-center p-4">
+    <div className="relative min-h-screen flex items-center justify-center p-4 overflow-hidden">
+      <DotGridBackground />
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="w-full max-w-md relative z-10"
       >
-        <Card>
-          <CardHeader>
-            <CardTitle>Sign In</CardTitle>
+        <div className="flex flex-col items-center justify-center mb-8 text-center">
+          <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl mb-4 shadow-lg shadow-indigo-500/5 backdrop-blur-xs">
+            <LinkIcon className="w-8 h-8 text-indigo-400" />
+          </div>
+          <h1 className="text-3xl font-black tracking-tight text-white mb-2 font-space-grotesk">
+            SwiftLink
+          </h1>
+          <p className="text-gray-400 text-sm max-w-xs">
+            Modern URL shortening with state-of-the-art analytics.
+          </p>
+        </div>
+        <Card className="shadow-2xl shadow-indigo-500/3">
+          <CardHeader className="text-center pb-2">
+            <CardTitle className="text-2xl font-bold">Sign In</CardTitle>
             <CardDescription>
               Enter your credentials to access your dashboard
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-              <div className="relative">
-                <Mail className="absolute left-3 top-10 w-5 h-5 text-gray-400" />
-                <Input
-                  label="Email"
-                  type="email"
-                  name="email"
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  error={errors.email}
-                  className="pl-10"
-                  disabled={loading}
-                />
-              </div>
-              <div className="relative">
-                <Lock className="absolute left-3 top-10 w-5 h-5 text-gray-400" />
-                <Input
-                  label="Password"
-                  type="password"
-                  name="password"
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  error={errors.password}
-                  className="pl-10"
-                  disabled={loading}
-                />
-              </div>
+              <Input
+                label="Email Address"
+                type="email"
+                name="email"
+                autoComplete="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                error={errors.email}
+                disabled={loading}
+                icon={<Mail className="w-4 h-4 text-gray-400" />}
+              />
+              <Input
+                label="Password"
+                type="password"
+                name="password"
+                autoComplete="current-password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                error={errors.password}
+                disabled={loading}
+                icon={<Lock className="w-4 h-4 text-gray-400" />}
+              />
               <Button
                 type="submit"
                 variant="default"
                 size="lg"
-                className="w-full"
+                className="w-full mt-2"
                 disabled={loading}
               >
                 {loading ? "Signing in..." : "Sign In"}
@@ -118,9 +125,9 @@ export function LoginPage() {
                 Don't have an account?{" "}
                 <Link
                   to="/auth/register"
-                  className="text-blue-500 hover:text-blue-400"
+                  className="text-indigo-400 hover:text-indigo-300 font-semibold transition-colors"
                 >
-                  Sign up
+                  Create one now
                 </Link>
               </p>
             </div>

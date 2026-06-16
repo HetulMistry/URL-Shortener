@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { X } from "lucide-react";
+import { X, Globe, Fingerprint, CalendarDays } from "lucide-react";
 import { urlService } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api-error";
@@ -102,50 +102,52 @@ export function CreateUrlModal({ open, onOpenChange }: CreateUrlModalProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={handleClose}
-            className="fixed inset-0 bg-black/50 z-40"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40"
           />
           <div className="fixed inset-0 flex items-center justify-center p-4 z-50 pointer-events-none">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
               className="pointer-events-auto w-full max-w-md"
             >
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+              <Card className="shadow-2xl border-white/8" hoverEffect={false}>
+                <CardHeader className="flex flex-row items-start justify-between pb-3">
                   <div>
-                    <CardTitle>Create Short URL</CardTitle>
+                    <CardTitle className="text-xl">Create Short URL</CardTitle>
                     <CardDescription>
-                      Generate a new shortened link
+                      Generate a new shortened redirection link.
                     </CardDescription>
                   </div>
                   <button
                     type="button"
                     onClick={handleClose}
-                    className="text-gray-400 hover:text-gray-200"
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 border border-transparent hover:border-white/4 transition-all"
                   >
-                    <X className="w-5 h-5" />
+                    <X className="w-4 h-4" />
                   </button>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-2">
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <Input
-                      label="Original URL"
+                      label="Original Link"
                       type="url"
-                      placeholder="https://example.com"
+                      placeholder="https://example.com/very/long/path"
                       value={originalUrl}
                       onChange={(e) => setOriginalUrl(e.target.value)}
                       error={errors.originalUrl}
                       disabled={mutation.isPending}
+                      icon={<Globe className="w-4 h-4 text-gray-400" />}
                     />
                     <Input
                       label="Custom Alias (Optional)"
                       type="text"
-                      placeholder="my-link"
+                      placeholder="my-link-name"
                       value={customAlias}
                       onChange={(e) => setCustomAlias(e.target.value)}
                       error={errors.customAlias}
                       disabled={mutation.isPending}
+                      icon={<Fingerprint className="w-4 h-4 text-gray-400" />}
                     />
                     <Input
                       label="Expiration Date (Optional)"
@@ -155,8 +157,9 @@ export function CreateUrlModal({ open, onOpenChange }: CreateUrlModalProps) {
                       onChange={(e) => setExpiresAt(e.target.value)}
                       error={errors.expiresAt}
                       disabled={mutation.isPending}
+                      icon={<CalendarDays className="w-4 h-4 text-gray-400" />}
                     />
-                    <div className="flex gap-2 pt-4">
+                    <div className="flex gap-3 pt-4">
                       <Button
                         type="button"
                         variant="outline"
@@ -172,7 +175,9 @@ export function CreateUrlModal({ open, onOpenChange }: CreateUrlModalProps) {
                         disabled={mutation.isPending}
                         className="flex-1"
                       >
-                        {mutation.isPending ? "Creating..." : "Create"}
+                        {mutation.isPending
+                          ? "Creating link..."
+                          : "Create link"}
                       </Button>
                     </div>
                   </form>

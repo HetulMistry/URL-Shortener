@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Mail, Lock } from "lucide-react";
+import { Mail, Lock, User, Link as LinkIcon } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { getApiErrorMessage } from "@/lib/api-error";
 import {
@@ -20,6 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/Card";
+import { DotGridBackground } from "@/components/ui/shared/DotGridBackground";
 
 export function RegisterPage() {
   const [name, setName] = useState("");
@@ -74,83 +75,86 @@ export function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-section-shell to-black flex items-center justify-center p-4">
+    <div className="relative min-h-screen flex items-center justify-center p-4 overflow-hidden">
+      <DotGridBackground />
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="w-full max-w-md relative z-10"
       >
-        <Card>
-          <CardHeader>
-            <CardTitle>Create Account</CardTitle>
-            <CardDescription>Sign up to start shortening URLs</CardDescription>
+        <div className="flex flex-col items-center justify-center mb-8 text-center">
+          <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl mb-4 shadow-lg shadow-indigo-500/5 backdrop-blur-xs">
+            <LinkIcon className="w-8 h-8 text-indigo-400" />
+          </div>
+          <h1 className="text-3xl font-black tracking-tight text-white mb-2 font-space-grotesk">
+            SwiftLink
+          </h1>
+          <p className="text-gray-400 text-sm max-w-xs">
+            Create an account to start shortening links and tracking detailed
+            analytics.
+          </p>
+        </div>
+        <Card className="shadow-2xl shadow-indigo-500/3">
+          <CardHeader className="text-center pb-2">
+            <CardTitle className="text-2xl font-bold">Create Account</CardTitle>
+            <CardDescription>Sign up to get started</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-              <div>
-                <Input
-                  label="Name"
-                  type="text"
-                  name="name"
-                  autoComplete="name"
-                  placeholder="John Doe"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  error={errors.name}
-                  disabled={loading}
-                />
-              </div>
-              <div className="relative">
-                <Mail className="absolute left-3 top-10 w-5 h-5 text-gray-400" />
-                <Input
-                  label="Email"
-                  type="email"
-                  name="email"
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  error={errors.email}
-                  className="pl-10"
-                  disabled={loading}
-                />
-              </div>
-              <div className="relative">
-                <Lock className="absolute left-3 top-10 w-5 h-5 text-gray-400" />
-                <Input
-                  label="Password"
-                  type="password"
-                  name="password"
-                  autoComplete="new-password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  error={errors.password}
-                  className="pl-10"
-                  disabled={loading}
-                />
-              </div>
-              <div className="relative">
-                <Lock className="absolute left-3 top-10 w-5 h-5 text-gray-400" />
-                <Input
-                  label="Confirm Password"
-                  type="password"
-                  name="confirmPassword"
-                  autoComplete="new-password"
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  error={errors.confirmPassword}
-                  className="pl-10"
-                  disabled={loading}
-                />
-              </div>
+              <Input
+                label="Full Name"
+                type="text"
+                name="name"
+                autoComplete="name"
+                placeholder="John Doe"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                error={errors.name}
+                disabled={loading}
+                icon={<User className="w-4 h-4 text-gray-400" />}
+              />
+              <Input
+                label="Email Address"
+                type="email"
+                name="email"
+                autoComplete="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                error={errors.email}
+                disabled={loading}
+                icon={<Mail className="w-4 h-4 text-gray-400" />}
+              />
+              <Input
+                label="Password"
+                type="password"
+                name="password"
+                autoComplete="new-password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                error={errors.password}
+                disabled={loading}
+                icon={<Lock className="w-4 h-4 text-gray-400" />}
+              />
+              <Input
+                label="Confirm Password"
+                type="password"
+                name="confirmPassword"
+                autoComplete="new-password"
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                error={errors.confirmPassword}
+                disabled={loading}
+                icon={<Lock className="w-4 h-4 text-gray-400" />}
+              />
               <Button
                 type="submit"
                 variant="default"
                 size="lg"
-                className="w-full"
+                className="w-full mt-2"
                 disabled={loading}
               >
                 {loading ? "Creating account..." : "Create Account"}
@@ -161,9 +165,9 @@ export function RegisterPage() {
                 Already have an account?{" "}
                 <Link
                   to="/auth/login"
-                  className="text-blue-500 hover:text-blue-400"
+                  className="text-indigo-400 hover:text-indigo-300 font-semibold transition-colors"
                 >
-                  Sign in
+                  Sign in instead
                 </Link>
               </p>
             </div>

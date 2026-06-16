@@ -3,12 +3,14 @@ import { clsx } from "clsx";
 
 export const Card = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
+  React.HTMLAttributes<HTMLDivElement> & { hoverEffect?: boolean }
+>(({ className, hoverEffect = true, ...props }, ref) => (
   <div
     ref={ref}
     className={clsx(
-      "bg-surface-card border border-gray-700 rounded-lg p-6 shadow-sm",
+      "bg-[#0f1016]/65 backdrop-blur-xl border border-white/8 rounded-xl p-6 shadow-xl relative overflow-hidden transition-all duration-300",
+      hoverEffect &&
+        "hover:border-indigo-500/30 hover:shadow-indigo-500/5 hover:-translate-y-0.5",
       className,
     )}
     {...props}
@@ -20,7 +22,11 @@ export const CardHeader = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={clsx("mb-4", className)} {...props} />
+  <div
+    ref={ref}
+    className={clsx("mb-4 flex flex-col gap-1.5", className)}
+    {...props}
+  />
 ));
 CardHeader.displayName = "CardHeader";
 
@@ -30,7 +36,10 @@ export const CardTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <h2
     ref={ref}
-    className={clsx("text-xl font-semibold text-white", className)}
+    className={clsx(
+      "text-lg md:text-xl font-bold tracking-tight bg-linear-to-r from-white via-white to-gray-400 bg-clip-text text-transparent",
+      className,
+    )}
     {...props}
   />
 ));
@@ -42,7 +51,7 @@ export const CardDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <p
     ref={ref}
-    className={clsx("text-sm text-gray-400 mt-1", className)}
+    className={clsx("text-sm text-gray-400/80 leading-relaxed", className)}
     {...props}
   />
 ));
@@ -60,6 +69,10 @@ export const CardFooter = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={clsx("flex gap-4 mt-6", className)} {...props} />
+  <div
+    ref={ref}
+    className={clsx("flex gap-4 mt-6 pt-4 border-t border-white/5", className)}
+    {...props}
+  />
 ));
 CardFooter.displayName = "CardFooter";

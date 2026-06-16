@@ -1,6 +1,15 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
-import { Copy, ExternalLink, Download, AlertCircle } from "lucide-react";
+import { useParams, Link } from "react-router-dom";
+import {
+  Copy,
+  ExternalLink,
+  Download,
+  AlertCircle,
+  ArrowLeft,
+  Calendar,
+  MousePointerClick,
+  Users,
+} from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getShortUrl } from "@/lib/config";
 import { urlService } from "@/services/api";
@@ -80,13 +89,19 @@ export function UrlDetailsPage() {
 
   if (!urlData)
     return (
-      <div className="bg-surface-card border border-red-700 rounded-lg p-6 flex items-start gap-3">
-        <AlertCircle className="w-5 h-5 text-red-500 mt-1" />
+      <div className="bg-red-500/10 border border-red-500/25 rounded-xl p-6 flex items-start gap-3">
+        <AlertCircle className="w-5 h-5 text-red-400 mt-0.5" />
         <div>
-          <h3 className="font-semibold text-white">URL not found</h3>
+          <h3 className="font-bold text-white">URL Link Not Found</h3>
           <p className="text-gray-400 text-sm mt-1">
-            The URL you're looking for doesn't exist.
+            The link details you are trying to view could not be loaded.
           </p>
+          <Link
+            to="/dashboard/urls"
+            className="text-indigo-400 text-xs font-semibold hover:underline mt-3 inline-block"
+          >
+            Return to Link Hub
+          </Link>
         </div>
       </div>
     );
@@ -96,23 +111,51 @@ export function UrlDetailsPage() {
   const shortUrl = getShortUrl(urlData.shortCode);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-white">URL Details</h1>
-        <p className="text-gray-400 mt-1">
-          Analytics and information for your shortened URL
-        </p>
+    <div className="space-y-8">
+      <div className="space-y-3">
+        <Link
+          to="/dashboard/urls"
+          className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-indigo-400 hover:text-indigo-300 transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back to URLs
+        </Link>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-extrabold text-white font-space-grotesk tracking-tight">
+              Link Analytics
+            </h1>
+            <p className="text-gray-400 text-sm mt-1">
+              Detailed tracking metrics and redirect configurations.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            className="flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Export CSV
+          </Button>
+        </div>
       </div>
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div>
-              <CardTitle>Short URL</CardTitle>
-              <CardDescription>Your shortened link</CardDescription>
+              <CardTitle className="text-xl">Redirection Settings</CardTitle>
+              <CardDescription>
+                Target mapping and expiration details.
+              </CardDescription>
             </div>
-            {isExpired && (
-              <span className="px-3 py-1 bg-red-900/20 border border-red-700 rounded text-red-300 text-xs font-medium">
+            {isExpired ? (
+              <span className="px-2.5 py-1 bg-red-500/10 border border-red-500/25 rounded-full text-red-400 text-[10px] font-bold uppercase tracking-wider">
                 Expired
+              </span>
+            ) : (
+              <span className="px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/25 rounded-full text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
+                Active
               </span>
             )}
           </div>
@@ -120,36 +163,36 @@ export function UrlDetailsPage() {
         <CardContent className="space-y-6">
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-400 uppercase">
-                Short Code
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider pl-0.5">
+                Alias Code
               </label>
               <div className="flex items-center gap-2">
-                <code className="flex-1 bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white font-mono text-sm break-all">
+                <code className="flex-1 bg-black/25 border border-white/6 rounded-lg px-4 py-2.5 text-white font-mono text-sm break-all">
                   {urlData.shortCode}
                 </code>
                 <Button
                   size="sm"
                   variant="secondary"
                   onClick={() => copyToClipboard(urlData.shortCode)}
-                  className="flex items-center gap-2"
+                  className="px-3 py-2.5 h-auto"
                 >
                   <Copy className="w-4 h-4" />
                 </Button>
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-400 uppercase">
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider pl-0.5">
                 Full Short URL
               </label>
               <div className="flex items-center gap-2">
-                <code className="flex-1 bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white font-mono text-sm break-all">
+                <code className="flex-1 bg-black/25 border border-white/6 rounded-lg px-4 py-2.5 text-white font-mono text-sm break-all">
                   {shortUrl}
                 </code>
                 <Button
                   size="sm"
                   variant="secondary"
                   onClick={() => copyToClipboard(shortUrl)}
-                  className="flex items-center gap-2"
+                  className="px-3 py-2.5 h-auto"
                 >
                   <Copy className="w-4 h-4" />
                 </Button>
@@ -157,94 +200,113 @@ export function UrlDetailsPage() {
             </div>
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-medium text-gray-400 uppercase">
-              Original URL
+            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider pl-0.5">
+              Original Destination URL
             </label>
             <div className="flex items-center gap-2">
-              <p className="flex-1 bg-gray-900 border border-gray-700 rounded px-3 py-2 text-gray-300 text-sm break-all">
+              <p className="flex-1 bg-black/25 border border-white/6 rounded-lg px-4 py-2.5 text-gray-300 text-sm break-all">
                 {urlData.originalUrl}
               </p>
               <Button
                 size="sm"
                 variant="secondary"
                 onClick={() => window.open(urlData.originalUrl, "_blank")}
-                className="flex items-center gap-2"
+                className="px-3 py-2.5 h-auto"
               >
                 <ExternalLink className="w-4 h-4" />
               </Button>
             </div>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4">
-            <div>
-              <p className="text-gray-400 text-xs uppercase">Clicks</p>
-              <p className="text-2xl font-bold text-white mt-1">
-                {urlData.clicks}
-              </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-white/5">
+            <div className="p-4 rounded-xl bg-white/2 border border-white/4">
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+                Total Clicks
+              </span>
+              <div className="flex items-center gap-2 mt-2">
+                <MousePointerClick className="w-4 h-4 text-indigo-400" />
+                <span className="text-xl font-extrabold text-white font-space-grotesk">
+                  {urlData.clicks}
+                </span>
+              </div>
             </div>
-            <div>
-              <p className="text-gray-400 text-xs uppercase">Visitors</p>
-              <p className="text-2xl font-bold text-white mt-1">
-                {analyticsData?.uniqueVisitors ?? "-"}
-              </p>
+            <div className="p-4 rounded-xl bg-white/2 border border-white/4">
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+                Unique Visitors
+              </span>
+              <div className="flex items-center gap-2 mt-2">
+                <Users className="w-4 h-4 text-cyan-400" />
+                <span className="text-xl font-extrabold text-white font-space-grotesk">
+                  {analyticsData?.uniqueVisitors ?? "-"}
+                </span>
+              </div>
             </div>
-            <div>
-              <p className="text-gray-400 text-xs uppercase">Created</p>
-              <p className="text-sm text-white mt-1">
-                {new Date(urlData.createdAt).toLocaleDateString()}
-              </p>
+            <div className="p-4 rounded-xl bg-white/2 border border-white/4">
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+                Created On
+              </span>
+              <div className="flex items-center gap-2 mt-2">
+                <Calendar className="w-4 h-4 text-gray-400" />
+                <span className="text-sm font-bold text-white mt-0.5">
+                  {new Date(urlData.createdAt).toLocaleDateString()}
+                </span>
+              </div>
             </div>
-            <div>
-              <p className="text-gray-400 text-xs uppercase">Expires</p>
-              <p className="text-sm text-white mt-1">
-                {urlData.expiresAt
-                  ? new Date(urlData.expiresAt).toLocaleDateString()
-                  : "Never"}
-              </p>
+            <div className="p-4 rounded-xl bg-white/2 border border-white/4">
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+                Expiration Date
+              </span>
+              <div className="flex items-center gap-2 mt-2">
+                <Calendar className="w-4 h-4 text-gray-400" />
+                <span className="text-sm font-bold text-white mt-0.5">
+                  {urlData.expiresAt
+                    ? new Date(urlData.expiresAt).toLocaleDateString()
+                    : "Never"}
+                </span>
+              </div>
             </div>
-          </div>
-          <div className="flex gap-2 pt-4">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleExport}
-              className="flex items-center gap-2"
-            >
-              <Download className="w-4 h-4" />
-              Export CSV
-            </Button>
           </div>
         </CardContent>
       </Card>
-      <QrCodeDisplay urlId={id!} />
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8">
-        <h2 className="text-xl font-bold text-white">Analytics</h2>
-        <div className="flex items-center gap-2">
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-white text-sm"
-          />
-          <span className="text-gray-400 text-sm">to</span>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-white text-sm"
-          />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+            <h2 className="text-xl font-bold text-white font-space-grotesk">
+              Interactive Analytics
+            </h2>
+            <div className="flex items-center gap-2 bg-black/20 border border-white/6 rounded-xl p-1.5 w-full sm:w-auto">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="bg-transparent border-none outline-none text-white text-xs px-2 py-1 cursor-pointer"
+              />
+              <span className="text-gray-500 text-xs font-semibold">to</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="bg-transparent border-none outline-none text-white text-xs px-2 py-1 cursor-pointer"
+              />
+            </div>
+          </div>
+          {analyticsLoading ? (
+            <CardSkeleton />
+          ) : analyticsData ? (
+            <UrlAnalyticsCharts analytics={analyticsData} />
+          ) : (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <p className="text-gray-400 text-sm">
+                  No analytics tracking data found in selected range.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+        <div className="lg:col-span-1">
+          <QrCodeDisplay urlId={id!} />
         </div>
       </div>
-      {analyticsLoading ? (
-        <CardSkeleton />
-      ) : analyticsData ? (
-        <UrlAnalyticsCharts analytics={analyticsData} />
-      ) : (
-        <Card>
-          <CardContent className="pt-6 text-center">
-            <p className="text-gray-400">No analytics data available yet</p>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

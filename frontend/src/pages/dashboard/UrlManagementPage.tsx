@@ -51,9 +51,11 @@ export function UrlManagementPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white">URL Management</h1>
-          <p className="text-gray-400 mt-1">
-            Create and manage your shortened URLs
+          <h1 className="text-3xl font-extrabold text-white font-space-grotesk tracking-tight">
+            URL Management
+          </h1>
+          <p className="text-gray-400 text-sm mt-1">
+            Create, search, and manage your shortened links.
           </p>
         </div>
         <Button
@@ -67,56 +69,60 @@ export function UrlManagementPage() {
         </Button>
       </div>
       <Card>
-        <CardHeader>
-          <CardTitle>Search URLs</CardTitle>
-          <CardDescription>Find your shortened URLs</CardDescription>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Filter Links</CardTitle>
+          <CardDescription>
+            Search by original URL path or shortcode alias.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="relative">
-            <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-            <Input
-              placeholder="Search by original URL or alias..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              className="pl-10"
-            />
-          </div>
+          <Input
+            placeholder="Search by original URL or alias..."
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            icon={<Search className="w-4 h-4 text-gray-400" />}
+          />
         </CardContent>
       </Card>
       {error && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="bg-red-900/20 border border-red-700 rounded-lg p-4 text-red-100"
+          className="bg-red-500/10 border border-red-500/25 rounded-xl p-4 text-red-400 text-sm"
         >
-          Failed to load URLs. Please try again.
+          Failed to load shortened URLs. Please reload or try again later.
         </motion.div>
       )}
       {isLoading ? (
-        <div className="space-y-2">
-          <CardSkeleton />
+        <div className="space-y-4">
           <CardSkeleton />
           <CardSkeleton />
         </div>
       ) : !data?.urls || data.urls.length === 0 ? (
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="bg-surface-card border border-gray-700 rounded-lg p-12 text-center"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-[#0e0f14]/45 backdrop-blur-md border border-white/6 rounded-xl p-12 text-center"
         >
-          <div className="space-y-2">
-            <h3 className="text-xl font-semibold text-white">No URLs yet</h3>
-            <p className="text-gray-400">
-              Create your first shortened URL to get started
-            </p>
+          <div className="space-y-4 max-w-sm mx-auto">
+            <div className="p-4 rounded-full bg-indigo-500/10 border border-indigo-500/25 text-indigo-400 inline-block">
+              <Plus className="w-8 h-8" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-lg font-bold text-white">No URLs found</h3>
+              <p className="text-gray-400 text-sm">
+                Get started by creating your very first shortened redirection
+                link.
+              </p>
+            </div>
             <Button
               variant="default"
               size="default"
               onClick={() => setShowCreateModal(true)}
-              className="mt-4 inline-flex items-center gap-2"
+              className="mt-2 inline-flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
               Create URL
@@ -131,21 +137,23 @@ export function UrlManagementPage() {
         />
       )}
       {data && data.totalPages > 1 && (
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between pt-4 border-t border-white/4">
           <Button
             variant="outline"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
+            size="sm"
           >
             Previous
           </Button>
-          <span className="text-gray-400">
+          <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">
             Page {page} of {data.totalPages}
           </span>
           <Button
             variant="outline"
             onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}
             disabled={page === data.totalPages}
+            size="sm"
           >
             Next
           </Button>

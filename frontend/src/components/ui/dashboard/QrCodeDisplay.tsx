@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Download, Copy } from "lucide-react";
+import { Download, Copy, QrCode } from "lucide-react";
 import { urlService } from "@/services/api";
 import api from "@/services/api";
 import {
@@ -63,42 +63,49 @@ export function QrCodeDisplay({ urlId }: QrCodeDisplayProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>QR Code</CardTitle>
-        <CardDescription>Scan to access your shortened URL</CardDescription>
+        <div className="flex items-center gap-2">
+          <QrCode className="w-5 h-5 text-indigo-400" />
+          <CardTitle>QR Code Generator</CardTitle>
+        </div>
+        <CardDescription>
+          Scan or share the generated QR code to navigate to your destination.
+        </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col items-center gap-6">
+      <CardContent className="flex flex-col items-center justify-center py-6 gap-6">
         {isLoading ? (
-          <Skeleton className="w-64 h-64" />
+          <Skeleton className="w-56 h-56 rounded-xl" />
         ) : data?.qrCode ? (
-          <>
-            <img
-              src={data.qrCode}
-              alt="QR Code"
-              className="w-64 h-64 border-2 border-gray-700 rounded-lg p-4 bg-white"
-            />
-            <div className="flex gap-2">
+          <div className="flex flex-col items-center gap-5 w-full">
+            <div className="p-4 bg-white rounded-2xl border border-white/10 shadow-2xl shadow-black/20">
+              <img
+                src={data.qrCode}
+                alt="QR Code"
+                className="w-48 h-48 block"
+              />
+            </div>
+            <div className="flex items-center gap-3 w-full max-w-xs">
               <Button
-                variant="secondary"
-                size="default"
+                variant="outline"
+                size="sm"
                 onClick={handleCopy}
-                className="flex items-center gap-2"
+                className="flex-1 flex items-center justify-center gap-1.5"
               >
-                <Copy className="w-4 h-4" />
+                <Copy className="w-3.5 h-3.5" />
                 Copy URL
               </Button>
               <Button
-                variant="secondary"
-                size="default"
+                variant="default"
+                size="sm"
                 onClick={handleDownload}
-                className="flex items-center gap-2"
+                className="flex-1 flex items-center justify-center gap-1.5"
               >
-                <Download className="w-4 h-4" />
+                <Download className="w-3.5 h-3.5" />
                 Download
               </Button>
             </div>
-          </>
+          </div>
         ) : (
-          <p className="text-gray-400">Failed to load QR code</p>
+          <p className="text-gray-400 text-sm">Failed to generate QR code</p>
         )}
       </CardContent>
     </Card>
