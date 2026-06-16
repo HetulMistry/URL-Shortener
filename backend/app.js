@@ -5,6 +5,10 @@ import errorMiddleware from "./middlewares/error.middleware.js";
 import urlRouter from "./routes/url.route.js";
 import { redirectToOriginalUrl } from "./controllers/url.controller.js";
 import { getHealth } from "./controllers/health.controller.js";
+import * as healthService from "./services/health.service.js";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const pkg = require("./package.json");
 import swaggerUi from "swagger-ui-express";
 import swaggerSpec from "./config/swagger.js";
 import requestLogger from "./middlewares/request-log.middleware.js";
@@ -96,8 +100,25 @@ const createApp = () => {
    *       200:
    *         description: Service is running
    */
+  // Serve static index from `public/index.html` (express.static already configured)
+  // If you prefer server-side rendering of version into the page, a small middleware
+  // could inject a template or a meta tag. For now the static page fetches `/health`.
+  // Serve the backend landing page at the root path.
   app.get("/", (req, res) => {
-    res.send("Hello World!");
+    // Resolve the path to the static index.html file.
+    const path = require("path");
+    const indexPath = path.join(
+      process.cwd(),
+      "backend",
+      "public",
+      "index.html",
+    );
+    res.sendFile(indexPath, (err) => {
+      if (err) {
+        // If the file is missing or cannot be read, fall back to a simple message.
+        res.status(500).send("Backend index page not available.");
+      }
+    });
   });
 
   app.use(errorMiddleware);
